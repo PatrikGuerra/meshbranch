@@ -2,8 +2,8 @@ import type { ReactNode } from 'react';
 import type { Parts, PartNode } from '../viewer/parts';
 import type { SceneView, ViewMode } from '../viewer/scene';
 
-const MODES: { id: ViewMode | null; label: string }[] = [
-  { id: null, label: 'Default' }, { id: 'solid', label: 'Solid' }, { id: 'edges', label: 'Edges' }, { id: 'wire', label: 'Wire' },
+const MODES: { id: ViewMode; label: string }[] = [
+  { id: 'solid', label: 'Solid' }, { id: 'edges', label: 'Edges' }, { id: 'wire', label: 'Wireframe' },
 ];
 const mm = (v: { x: number; y: number; z: number }) => `${v.x.toFixed(1)} × ${v.y.toFixed(1)} × ${v.z.toFixed(1)} mm`;
 const leafCount = (n: PartNode): number => n.children.length ? n.children.reduce((s, c) => s + leafCount(c), 0) : 1;

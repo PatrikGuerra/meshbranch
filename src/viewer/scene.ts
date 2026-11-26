@@ -124,7 +124,7 @@ export class SceneView {
   }
 
   applyModes() {
-    const global: ViewMode = this.wire ? 'wire' : this.edges ? 'edges' : 'solid';
+    const global: ViewMode = this.globalMode();
     for (const o of this.meshes) {
       const mode: ViewMode = o.userData.mode ?? global;
       mats(o).forEach(m => { m.wireframe = mode === 'wire'; });
@@ -156,6 +156,12 @@ export class SceneView {
     for (const o of meshes) o.userData.mode = mode ?? undefined;
     this.applyModes();
   }
+  // The toolbar's Edges/Wireframe apply to the whole model, so they drop the per-part choices.
+  clearPartModes() {
+    for (const o of this.meshes) o.userData.mode = undefined;
+    this.applyModes();
+  }
+  private globalMode(): ViewMode { return this.wire ? 'wire' : this.edges ? 'edges' : 'solid'; }
   resetPart(meshes: THREE.Mesh[]) {
     for (const o of meshes) {
       const base = o.userData.base as Base[];
@@ -168,10 +174,10 @@ export class SceneView {
     }
     this.applyModes();
   }
-  // Current look of the first mesh, to fill the part controls.
-  partLook(meshes: THREE.Mesh[]): { color: string; opacity: number; mode: ViewMode | null } {
+  // Current look of the first mesh, to fill the part controls. The mode is the one on screen.
+  partLook(meshes: THREE.Mesh[]): { color: string; opacity: number; mode: ViewMode } {
     const m = meshes[0] ? mats(meshes[0])[0] : null;
-    return { color: m ? `#${m.color.getHexString()}` : '#c9ced6', opacity: m?.opacity ?? 1, mode: meshes[0]?.userData.mode ?? null };
+    return { color: m ? `#${m.color.getHexString()}` : '#c9ced6', opacity: m?.opacity ?? 1, mode: meshes[0]?.userData.mode ?? this.globalMode() };
   }
   setHighlight(meshes: THREE.Mesh[]) {
     this.highlighted = new Set(meshes);

@@ -47,7 +47,7 @@ Proposta de valor: **"o navegador de modelos 3D do seu repositório"**. É só c
 | R13 | Tema claro e escuro. Interface só em en-US na V1. Os textos ficam num arquivo `en-US.json`, para traduzir depois. |
 | R14 | Ao abrir um repositório, nenhum arquivo abre sozinho. O centro mostra "Select a 3D file" e a lista dos modelos do repositório. |
 | R15 | Na V1, o seletor mostra só branches. Tags ficam para depois. |
-| R16 | Cada peça (ou grupo) pode trocar de cor, de transparência (0 a 90%; para sumir com a peça, usa-se o olho) e de modo de vista: sólido, sólido com arestas ou wireframe. Num grupo, a mudança vale para todos os filhos. "Reset" volta ao que veio no arquivo. As mudanças não alteram o arquivo e somem ao trocar de arquivo. |
+| R16 | Cada peça (ou grupo) pode trocar de cor, de transparência (0 a 90%; para sumir com a peça, usa-se o olho) e de modo de vista: sólido, sólido com arestas ou wireframe. Num grupo, a mudança vale para todos os filhos. O painel da peça sempre mostra o modo que está na tela. Edges e Wireframe da barra de cima valem para o modelo todo e desfazem a escolha por peça. "Reset" volta ao que veio no arquivo. As mudanças não alteram o arquivo e somem ao trocar de arquivo. |
 
 ### Fora do escopo
 

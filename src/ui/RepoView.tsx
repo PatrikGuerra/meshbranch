@@ -142,6 +142,7 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
     if (!view) return;
     Object.assign(view, { edges: modes.edges, wire: modes.wire, gridOn: modes.grid });
     view.applyModes();
+    bump(); // the part panel shows the mode now on screen
   }, [view, modes]);
 
   // ----- Parts: visibility, isolate, selection in both directions -----
@@ -219,8 +220,8 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
             <div className="toolbar" role="toolbar" aria-label="View">
               {(['fit', 'iso', 'top', 'front', 'right'] as View[]).map(v => <button key={v} className="tb" onClick={() => view?.fit(v)}>{v[0].toUpperCase() + v.slice(1)}</button>)}
               <span className="sep" />
-              <button className="tb" aria-pressed={modes.edges} onClick={() => setModes(m => ({ ...m, edges: !m.edges }))}>Edges</button>
-              <button className="tb" aria-pressed={modes.wire} onClick={() => setModes(m => ({ ...m, wire: !m.wire }))}>Wireframe</button>
+              <button className="tb" aria-pressed={modes.edges} onClick={() => { view?.clearPartModes(); setModes(m => ({ ...m, edges: !m.edges })); }}>Edges</button>
+              <button className="tb" aria-pressed={modes.wire} onClick={() => { view?.clearPartModes(); setModes(m => ({ ...m, wire: !m.wire })); }}>Wireframe</button>
               <button className="tb" aria-pressed={modes.grid} onClick={() => setModes(m => ({ ...m, grid: !m.grid }))}>Grid</button>
             </div>
           </div>
