@@ -1,5 +1,5 @@
-import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
-import { visibility, type PartNode, type Parts } from '../viewer/parts';
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import { matchParts, visibility, type PartNode, type Parts } from '../viewer/parts';
 import { Icon } from './icons';
 
 const AUTO_EXPAND_LIMIT = 200; // small models open fully; big ones show only the first level
@@ -10,6 +10,8 @@ export function ModelTree({ parts, selected, onSelect, onToggle, onIsolate }: {
 }) {
   const [open, setOpen] = useState<Set<number>>(() => new Set(parts.all
     .filter(n => n.children.length && (parts.all.length <= AUTO_EXPAND_LIMIT || n.depth <= 0)).map(n => n.id)));
+  const [query, setQuery] = useState('');
+  const matches = useMemo(() => matchParts(parts, query), [parts, query]);
 
   // Open the groups above a part picked in the 3D view, then bring its row into view.
   useEffect(() => {
@@ -20,7 +22,8 @@ export function ModelTree({ parts, selected, onSelect, onToggle, onIsolate }: {
 
   const flip = (id: number) => setOpen(s => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const rows = (nodes: PartNode[]): ReactNode[] => nodes.flatMap(n => {
-    const group = n.children.length > 0, isOpen = open.has(n.id), vis = visibility(n);
+    if (matches && !matches.has(n.id)) return [];
+    const group = n.children.length > 0, isOpen = !!matches || open.has(n.id), vis = visibility(n);
     return [
       <div key={n.id} data-part={n.id} className={`row ${selected === n ? 'sel' : ''} ${vis === 'off' ? 'dim' : ''}`}
         style={{ '--d': n.depth } as CSSProperties} role="treeitem" aria-selected={selected === n} aria-expanded={group ? isOpen : undefined} tabIndex={0}
@@ -43,6 +46,12 @@ export function ModelTree({ parts, selected, onSelect, onToggle, onIsolate }: {
       ...(group && isOpen ? rows(n.children) : []),
     ];
   });
+  const list = rows(parts.root.children);
 
-  return <div className="tree" role="tree" aria-label="Parts">{rows(parts.root.children)}</div>;
+  return (
+    <>
+      <div className="search"><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Filter parts…" aria-label="Filter parts" /></div>
+      <div className="tree" role="tree" aria-label="Parts">{list.length ? list : <div className="tree-empty">No matching parts.</div>}</div>
+    </>
+  );
 }

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { buildParts, visibility } from './parts';
+import { buildParts, matchParts, visibility } from './parts';
 
 const mesh = (name = '') => { const m = new THREE.Mesh(new THREE.BoxGeometry()); m.name = name; return m; };
 const group = (name: string, ...kids: THREE.Object3D[]) => { const g = new THREE.Group(); g.name = name; g.add(...kids); return g; };
@@ -36,5 +36,21 @@ describe('buildParts', () => {
     expect(visibility(p.root)).toBe('mixed');
     b.visible = false;
     expect(visibility(p.root)).toBe('off');
+  });
+});
+
+describe('matchParts', () => {
+  const p = buildParts(group('f', group('Case', group('Base', mesh('Floor'), mesh('Wall')), mesh('Lid')), group('Fan', mesh('Frame'), mesh('Hub'))));
+  const names = (q: string) => { const m = matchParts(p, q); return m && p.all.filter(n => m.has(n.id)).map(n => n.name); };
+
+  it('keeps the groups above a matching part', () => {
+    expect(names('wall')).toEqual(['Case', 'Base', 'Wall']);
+  });
+  it('keeps everything inside a matching group', () => {
+    expect(names('FAN')).toEqual(['Fan', 'Frame', 'Hub']);
+  });
+  it('returns null without a query and an empty set without matches', () => {
+    expect(names('  ')).toBeNull();
+    expect(names('zzz')).toEqual([]);
   });
 });

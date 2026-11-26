@@ -48,3 +48,18 @@ export const visibility = (n: PartNode): 'on' | 'off' | 'mixed' => {
   const v = n.meshes.filter(m => m.visible).length;
   return v === n.meshes.length ? 'on' : v ? 'mixed' : 'off';
 };
+
+// Ids of the parts whose name matches, the groups above them and, for a matching group, everything inside it.
+// null = no search.
+export function matchParts(parts: Parts, query: string): Set<number> | null {
+  const q = query.trim().toLowerCase();
+  if (!q) return null;
+  const keep = new Set<number>();
+  for (const n of parts.all) {
+    if (!n.parent || !n.name.toLowerCase().includes(q)) continue;
+    for (let p: PartNode | null = n; p && p.parent; p = p.parent) keep.add(p.id);
+    const stack = [...n.children];
+    while (stack.length) { const c = stack.pop()!; keep.add(c.id); stack.push(...c.children); }
+  }
+  return keep;
+}

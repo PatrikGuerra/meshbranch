@@ -12,7 +12,7 @@ export function TypeBadge({ format, name }: { format: Format | null; name: strin
   return <span className="ft ft-other">{ext}</span>;
 }
 
-export function FileTree({ entries, selected, reveal, onOpen }: { entries: TreeEntry[]; selected?: string; reveal?: string; onOpen: (path: string) => void }) {
+export function FileTree({ entries, selected, reveal, onOpen, onCollapse }: { entries: TreeEntry[]; selected?: string; reveal?: string; onOpen: (path: string) => void; onCollapse: () => void }) {
   const [only3d, setOnly3d] = useState(true);
   const [formats, setFormats] = useState<Set<Format>>(() => new Set(FORMATS));
   const [query, setQuery] = useState('');
@@ -56,7 +56,12 @@ export function FileTree({ entries, selected, reveal, onOpen }: { entries: TreeE
 
   return (
     <>
-      <div className="panel-head"><span>Files</span><label className="switch"><input type="checkbox" checked={only3d} onChange={e => setOnly3d(e.target.checked)} />3D only</label></div>
+      <div className="panel-head"><span>Files</span>
+        <span className="actions">
+          <label className="switch"><input type="checkbox" checked={only3d} onChange={e => setOnly3d(e.target.checked)} />3D only</label>
+          <button className="icon-btn small" onClick={onCollapse} title="Hide files" aria-label="Hide files"><Icon name="panel" /></button>
+        </span>
+      </div>
       <div className="search"><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Filter files…" aria-label="Filter files" /></div>
       <div className="chips">
         {FORMATS.map(f => <button key={f} className="chip" aria-pressed={formats.has(f)} onClick={() => toggleFormat(f)}>{FORMAT_LABEL[f]}</button>)}

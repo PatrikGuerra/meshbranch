@@ -254,9 +254,9 @@ Layout:
 |---|---|
 | Barra superior | Logo, repositório, seletor de branch (com ponto laranja), tema, "Copy link", requisições restantes |
 | Banner | "Branch X tem N arquivos 3D mais novos", com "Compare" e "Switch" |
-| Esquerda | Árvore de arquivos, busca, filtros |
+| Esquerda | Árvore de arquivos, busca, filtros. Recolhe numa barra fina para dar espaço ao 3D. |
 | Centro | Caminho do arquivo, barra de vistas e o 3D |
-| Direita | Árvore de peças (olho para ligar e desligar), propriedades, aviso de versão mais nova, último commit |
+| Direita | Árvore de peças com busca (olho para ligar e desligar), propriedades recolhíveis, aviso de versão mais nova, último commit |
 | Barra de status | Requisições restantes, cache, peças e triângulos visíveis |
 
 ### Mock

@@ -33,7 +33,15 @@ a{color:var(--accent-text);text-decoration:none}a:hover{text-decoration:underlin
 .banner{display:flex;align-items:center;gap:10px;padding:7px 14px;background:var(--warn-weak);border-bottom:1px solid var(--warn-border)}
 .banner>svg{color:var(--warn)}
 .banner .grow{flex:1}
-.layout{display:grid;grid-template-columns:280px 1fr 300px;min-height:0}
+.layout{display:grid;grid-template-columns:var(--left,280px) 1fr var(--right,300px);min-height:0}
+.layout.files-closed{--left:40px}
+.rail{display:flex;flex-direction:column;align-items:center;gap:10px;padding:12px 0;border:0;background:none;color:var(--muted);cursor:pointer;height:100%;width:100%}
+.rail:hover{background:var(--hover);color:var(--text)}
+.rail span{writing-mode:vertical-rl;font-size:11px;font-weight:650;letter-spacing:.06em;text-transform:uppercase}
+.icon-btn.small{width:24px;height:24px}
+.panel-toggle{display:flex;align-items:center;gap:4px;border:0;background:none;padding:0;margin-left:-4px;cursor:pointer;font:inherit;color:inherit;text-transform:inherit;letter-spacing:inherit}
+.panel-toggle:hover{color:var(--text)}
+.panel-head .switch{margin-right:4px}
 .sidebar{background:var(--panel);display:flex;flex-direction:column;min-height:0}
 .left{border-right:1px solid var(--border)}
 .right{border-left:1px solid var(--border);overflow:auto}
@@ -139,6 +147,6 @@ a{color:var(--accent-text);text-decoration:none}a:hover{text-decoration:underlin
 .feature svg{width:20px;height:20px;color:var(--accent)}
 .feature h3{margin:10px 0 4px;font-size:13.5px}.feature p{margin:0;color:var(--muted);font-size:12.5px}
 .home-foot{padding:14px 22px;color:var(--faint);font-size:12px;display:flex;justify-content:space-between;gap:12px;border-top:1px solid var(--border)}
-@media (max-width:1100px){.layout{grid-template-columns:240px 1fr 260px}}
-@media (max-width:860px){.layout{grid-template-columns:200px 1fr 230px}.toolbar .tb:nth-child(-n+5){display:none}.toolbar .sep{display:none}.hint{display:none}}
+@media (max-width:1100px){.layout{--left:240px;--right:260px}}
+@media (max-width:860px){.layout{--left:200px;--right:230px}.toolbar .tb:nth-child(-n+5){display:none}.toolbar .sep{display:none}.hint{display:none}}
 @media (max-width:720px){.features{grid-template-columns:1fr}.home h1{font-size:26px}.home-foot{flex-direction:column}}

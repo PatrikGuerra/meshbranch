@@ -10,6 +10,7 @@ import { FileTree, TypeBadge } from './FileTree';
 import { Icon } from './icons';
 import { ModelTree } from './ModelTree';
 import { PartPanel } from './PartPanel';
+import { useStoredFlag } from './useStoredFlag';
 import { Viewer } from './Viewer';
 
 type RepoRoute = Extract<Route, { kind: 'repo' }>;
@@ -45,6 +46,8 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
   const [toast, setToast] = useState('');
   const [selected, setSelected] = useState<PartNode | null>(null);
   const [, bump] = useReducer((n: number) => n + 1, 0); // re-render after changing the 3D scene in place
+  const [filesClosed, toggleFiles] = useStoredFlag('meshbranch-files-closed', false);
+  const [propsClosed, toggleProps] = useStoredFlag('meshbranch-props-closed', false);
   const onView = useCallback((v: SceneView | null) => setView(v), []);
 
   useEffect(() => onRateLimit(setRate), []);
@@ -195,9 +198,11 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
 
       {ready?.tree.truncated && <div className="banner"><Icon name="warn" /><span className="grow">This repository is very large. GitHub returned only part of its file list, so some files are missing.</span></div>}
 
-      <main className="layout">
+      <main className={`layout ${filesClosed ? 'files-closed' : ''}`}>
         <aside className="sidebar left" aria-label="Repository files">
-          {ready ? <FileTree key={ready.sha} entries={ready.tree.entries} selected={path} reveal={target} onOpen={open} />
+          {filesClosed
+            ? <button className="rail" onClick={toggleFiles} title="Show files" aria-label="Show files"><Icon name="panel" /><span>Files</span></button>
+            : ready ? <FileTree key={ready.sha} entries={ready.tree.entries} selected={path} reveal={target} onOpen={open} onCollapse={toggleFiles} />
             : <div className="tree-empty">{state.status === 'loading' ? 'Loading files…' : ''}</div>}
         </aside>
 
@@ -251,10 +256,13 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
               : <div className="tree-empty">{file.status === 'loading' ? 'Reading parts…' : 'Open a file to see its parts.'}</div>}
           </div>
           {parts && view && <>
-            <div className="panel-head"><span>{selected ? 'Part' : 'Properties'}</span>
+            <div className="panel-head">
+              <button className="panel-toggle" aria-expanded={!propsClosed} onClick={toggleProps} title={propsClosed ? 'Show properties' : 'Hide properties'}>
+                <span className={`tw ${propsClosed ? '' : 'open'}`}><Icon name="chev" /></span>{selected ? 'Part' : 'Properties'}
+              </button>
               {selected && <span className="actions"><button className="link-btn" onClick={() => setSelected(null)}>Clear</button></span>}
             </div>
-            <PartPanel view={view} parts={parts} selected={selected} format={fmt ? FORMAT_LABEL[fmt] : ''} size={mb(entry?.size ?? 0)} onChange={bump} />
+            {!propsClosed && <PartPanel view={view} parts={parts} selected={selected} format={fmt ? FORMAT_LABEL[fmt] : ''} size={mb(entry?.size ?? 0)} onChange={bump} />}
           </>}
         </aside>
       </main>
