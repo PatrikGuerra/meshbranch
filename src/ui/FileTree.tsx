@@ -56,15 +56,13 @@ export function FileTree({ entries, selected, reveal, onOpen, onCollapse }: { en
 
   return (
     <>
-      <div className="panel-head"><span>Files</span>
-        <span className="actions">
-          <label className="switch"><input type="checkbox" checked={only3d} onChange={e => setOnly3d(e.target.checked)} />3D only</label>
-          <button className="icon-btn small" onClick={onCollapse} title="Hide files" aria-label="Hide files"><Icon name="panel" /></button>
-        </span>
-      </div>
+      <button className="panel-head panel-bar" onClick={onCollapse} title="Hide files" aria-label="Hide files">
+        <span>Files</span><Icon name="panel" />
+      </button>
       <div className="search"><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Filter files…" aria-label="Filter files" /></div>
       <div className="chips">
         {FORMATS.map(f => <button key={f} className="chip" aria-pressed={formats.has(f)} onClick={() => toggleFormat(f)}>{FORMAT_LABEL[f]}</button>)}
+        <label className="switch push"><input type="checkbox" checked={only3d} onChange={e => setOnly3d(e.target.checked)} />3D only</label>
       </div>
       <div className="tree" role="tree">{list.length ? list : <div className="tree-empty">No matching files.</div>}</div>
       <div className="left-foot">{entries.filter(e => e.type === 'blob').length.toLocaleString('en-US')} files · {models.toLocaleString('en-US')} models</div>

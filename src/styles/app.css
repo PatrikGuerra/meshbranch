@@ -41,7 +41,15 @@ a{color:var(--accent-text);text-decoration:none}a:hover{text-decoration:underlin
 .icon-btn.small{width:24px;height:24px}
 .panel-toggle{display:flex;align-items:center;gap:4px;border:0;background:none;padding:0;margin-left:-4px;cursor:pointer;font:inherit;color:inherit;text-transform:inherit;letter-spacing:inherit}
 .panel-toggle:hover{color:var(--text)}
-.panel-head .switch{margin-right:4px}
+/* The whole title bar is the click target: the toggle stretches over the bar, other buttons sit on top. */
+.panel-head.has-toggle{position:relative}
+.panel-head.has-toggle .panel-toggle::after{content:"";position:absolute;inset:0}
+.panel-head.has-toggle .actions{position:relative;z-index:1}
+.panel-head.has-toggle:hover{background:var(--hover);color:var(--text)}
+.panel-bar{width:100%;border:0;background:none;cursor:pointer;text-align:left;font-family:inherit}
+.panel-bar:hover{background:var(--hover);color:var(--text)}
+.switch.push{margin-left:auto}
+.chips{align-items:center}
 .sidebar{background:var(--panel);display:flex;flex-direction:column;min-height:0}
 .left{border-right:1px solid var(--border)}
 .right{border-left:1px solid var(--border);overflow:auto}

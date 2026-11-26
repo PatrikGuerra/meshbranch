@@ -257,7 +257,7 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
               : <div className="tree-empty">{file.status === 'loading' ? 'Reading parts…' : 'Open a file to see its parts.'}</div>}
           </div>
           {parts && view && <>
-            <div className="panel-head">
+            <div className="panel-head has-toggle">
               <button className="panel-toggle" aria-expanded={!propsClosed} onClick={toggleProps} title={propsClosed ? 'Show properties' : 'Hide properties'}>
                 <span className={`tw ${propsClosed ? '' : 'open'}`}><Icon name="chev" /></span>{selected ? 'Part' : 'Properties'}
               </button>
