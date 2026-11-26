@@ -1,18 +1,22 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import type * as THREE from 'three';
 import { buildHash, splitRefPath, type Route } from '../app/route';
 import { download, getDefaultBranch, getTree, GitHubError, listBranches, onRateLimit, rawUrl, resolveCommit, type RateLimit, type Tree } from '../github/client';
 import { FORMAT_LABEL, formatOf, isLfsPointer } from '../importers/formats';
 import { loadModel } from '../importers/load';
+import { buildParts, visibility, type PartNode, type Parts } from '../viewer/parts';
 import type { ModelStats, SceneView, View } from '../viewer/scene';
 import { FileTree, TypeBadge } from './FileTree';
 import { Icon } from './icons';
+import { ModelTree } from './ModelTree';
+import { PartPanel } from './PartPanel';
 import { Viewer } from './Viewer';
 
 type RepoRoute = Extract<Route, { kind: 'repo' }>;
 type RepoState = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; ref: string; sha: string; tree: Tree; isDefault: boolean };
 type FileState =
   | { status: 'none' } | { status: 'loading'; step: string; progress?: number } | { status: 'error'; message: string }
-  | { status: 'big'; size: number } | { status: 'lfs' } | { status: 'ready'; stats: ModelStats };
+  | { status: 'big'; size: number } | { status: 'lfs' } | { status: 'ready'; stats: ModelStats; parts: Parts };
 
 const BIG_FILE = 50 * 1024 * 1024; // ask before opening files larger than this
 const EMPTY_LIST_LIMIT = 100;
@@ -39,6 +43,8 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
   const [allowBig, setAllowBig] = useState<Set<string>>(new Set());
   const [modes, setModes] = useState({ edges: true, wire: false, grid: true });
   const [toast, setToast] = useState('');
+  const [selected, setSelected] = useState<PartNode | null>(null);
+  const [, bump] = useReducer((n: number) => n + 1, 0); // re-render after changing the 3D scene in place
   const onView = useCallback((v: SceneView | null) => setView(v), []);
 
   useEffect(() => onRateLimit(setRate), []);
@@ -85,6 +91,7 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
   // Open the file. Files come from raw.githubusercontent.com, pinned to the commit SHA.
   useEffect(() => {
     if (state.status !== 'ready' || !view) return;
+    setSelected(null);
     const entry = target ? state.tree.entries.find(e => e.path === target) : undefined;
     if (!target || entry?.type === 'tree') { view.setModel(null); setFile({ status: 'none' }); return; }
     const path = target;
@@ -118,7 +125,8 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
       if (ac.signal.aborted) return;
       view.setModel(obj);
       setModes(m => ({ ...m, edges: view.edges }));
-      setFile({ status: 'ready', stats: view.stats() });
+      setSelected(null);
+      setFile({ status: 'ready', stats: view.stats(), parts: buildParts(obj) });
     })().catch((e: Error) => {
       if (ac.signal.aborted) return;
       view.setModel(null);
@@ -133,10 +141,32 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
     view.applyModes();
   }, [view, modes]);
 
+  // ----- Parts: visibility, isolate, selection in both directions -----
+  const parts = file.status === 'ready' ? file.parts : null;
+  const setShown = (meshes: THREE.Mesh[], v: boolean) => { meshes.forEach(m => { m.visible = v; }); view?.touch(); bump(); };
+  const toggle = (n: PartNode) => setShown(n.meshes, visibility(n) === 'off');
+  const isolate = (n: PartNode) => {
+    if (!parts) return;
+    setShown(parts.root.meshes, false); setShown(n.meshes, true); setSelected(n);
+    setToast(`Isolated “${n.name}” · Show all to bring back the rest`);
+  };
+  const isolateRef = useRef(isolate);
+  isolateRef.current = isolate;
+  useEffect(() => { view?.setHighlight(selected?.meshes ?? []); }, [view, selected]);
+  useEffect(() => {
+    if (!view) return;
+    view.onPick = (mesh, double) => {
+      const n = mesh ? parts?.byMesh.get(mesh) ?? null : null;
+      if (double && n) isolateRef.current(n); else setSelected(n);
+    };
+    return () => { view.onPick = null; };
+  }, [view, parts]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement).matches('input, textarea')) return;
       if (e.key.toLowerCase() === 'f' && !e.ctrlKey && !e.metaKey) view?.fit('fit');
+      if (e.key === 'Escape') setSelected(null);
     };
     addEventListener('keydown', onKey);
     return () => removeEventListener('keydown', onKey);
@@ -208,13 +238,32 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
             {file.status === 'big' && path && <div className="overlay"><div className="card"><h2>Large file: {mb(file.size)}</h2><p>Opening it may use a lot of memory and take a while.</p><button className="btn primary" onClick={() => setAllowBig(s => new Set(s).add(path))}>Open anyway</button></div></div>}
           </Viewer>
         </section>
+
+        <aside className="sidebar right" aria-label="Model">
+          <div className="model-wrap">
+            <div className="panel-head"><span>Model</span>
+              {parts && <span className="actions">
+                <button className="link-btn" onClick={() => setShown(parts.root.meshes, true)}>Show all</button>
+                <button className="link-btn" onClick={() => setShown(parts.root.meshes, false)}>Hide all</button>
+              </span>}
+            </div>
+            {parts ? <ModelTree key={path} parts={parts} selected={selected} onSelect={setSelected} onToggle={toggle} onIsolate={isolate} />
+              : <div className="tree-empty">{file.status === 'loading' ? 'Reading parts…' : 'Open a file to see its parts.'}</div>}
+          </div>
+          {parts && view && <>
+            <div className="panel-head"><span>{selected ? 'Part' : 'Properties'}</span>
+              {selected && <span className="actions"><button className="link-btn" onClick={() => setSelected(null)}>Clear</button></span>}
+            </div>
+            <PartPanel view={view} parts={parts} selected={selected} format={fmt ? FORMAT_LABEL[fmt] : ''} size={mb(entry?.size ?? 0)} onChange={bump} />
+          </>}
+        </aside>
       </main>
 
       <footer className="statusbar">
         <span title="GitHub allows 60 API requests per hour per IP without sign-in. File downloads do not count.">
           <span className={`dotc ${rate && rate.remaining < 10 ? 'low' : ''}`} />api.github.com · {rate ? `${rate.remaining} / ${rate.limit} requests left · resets ${time(rate.reset)}` : 'no API requests this visit (answered from cache)'}
         </span>
-        {file.status === 'ready' && <span className="r">{file.stats.parts.toLocaleString('en-US')} {file.stats.parts === 1 ? 'part' : 'parts'} · {Math.round(file.stats.triangles).toLocaleString('en-US')} {Math.round(file.stats.triangles) === 1 ? 'triangle' : 'triangles'} · {file.stats.size.x.toFixed(1)} × {file.stats.size.y.toFixed(1)} × {file.stats.size.z.toFixed(1)} mm</span>}
+        {file.status === 'ready' && <span className="r">{parts!.leaves.filter(l => visibility(l) !== 'off').length.toLocaleString('en-US')} / {parts!.leaves.length.toLocaleString('en-US')} {parts!.leaves.length === 1 ? 'part' : 'parts'} visible · {Math.round(file.stats.triangles).toLocaleString('en-US')} {Math.round(file.stats.triangles) === 1 ? 'triangle' : 'triangles'} · {file.stats.size.x.toFixed(1)} × {file.stats.size.y.toFixed(1)} × {file.stats.size.z.toFixed(1)} mm</span>}
       </footer>
       {toast && <div className="toast" role="status">{toast}</div>}
     </div>
