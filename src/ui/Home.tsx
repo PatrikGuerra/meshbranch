@@ -1,16 +1,16 @@
 import { useState, type FormEvent } from 'react';
-import { parseRepoInput, type RepoRef } from '../app/route';
+import { parseRepoInput, type RepoTarget } from '../app/route';
 import { Icon } from './icons';
 
 // Public repositories with STEP, STL or OBJ files, used as one-click examples.
 const EXAMPLES = ['kovacsv/Online3DViewer', 'prusa3d/Original-Prusa-i3'];
 
-export function Home({ onOpen, onToggleTheme }: { onOpen: (r: RepoRef) => void; onToggleTheme: () => void }) {
+export function Home({ onOpen, onToggleTheme }: { onOpen: (r: RepoTarget) => void; onToggleTheme: () => void }) {
   const [value, setValue] = useState('');
   const [error, setError] = useState('');
   const open = (input: string) => {
     const r = parseRepoInput(input);
-    if (r) onOpen(r); else setError('Enter a repository as owner/repo or paste its GitHub URL.');
+    if (r) onOpen(r); else setError('Enter a repository as owner/repo, or paste a GitHub link to a repo, branch, folder or file.');
   };
   const submit = (e: FormEvent) => { e.preventDefault(); open(value); };
 
@@ -24,7 +24,7 @@ export function Home({ onOpen, onToggleTheme }: { onOpen: (r: RepoRef) => void; 
         <h1>Browse the 3D models in any GitHub repository</h1>
         <p className="lead">Open STEP, STL and OBJ files in your browser, straight from a public repository. Nothing to install, no sign-in.</p>
         <form className="home-form" onSubmit={submit} autoComplete="off">
-          <input autoFocus value={value} onChange={e => { setValue(e.target.value); setError(''); }} placeholder="owner/repo or https://github.com/owner/repo" aria-label="Repository" spellCheck={false} />
+          <input autoFocus value={value} onChange={e => { setValue(e.target.value); setError(''); }} placeholder="owner/repo, or a GitHub link to a repo, branch, folder or file" aria-label="Repository" spellCheck={false} />
           <button className="btn primary" type="submit">Open</button>
         </form>
         <div className="home-err" role="alert">{error}</div>

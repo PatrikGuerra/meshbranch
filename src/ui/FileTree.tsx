@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import type { TreeEntry } from '../github/client';
 import { FORMAT_BADGE, FORMATS, FORMAT_LABEL, type Format } from '../importers/formats';
 import { allDirs, buildTree, countFiles, type DirNode } from '../tree/buildTree';
@@ -12,7 +12,7 @@ export function TypeBadge({ format, name }: { format: Format | null; name: strin
   return <span className="ft ft-other">{ext}</span>;
 }
 
-export function FileTree({ entries, selected, onOpen }: { entries: TreeEntry[]; selected?: string; onOpen: (path: string) => void }) {
+export function FileTree({ entries, selected, reveal, onOpen }: { entries: TreeEntry[]; selected?: string; reveal?: string; onOpen: (path: string) => void }) {
   const [only3d, setOnly3d] = useState(true);
   const [formats, setFormats] = useState<Set<Format>>(() => new Set(FORMATS));
   const [query, setQuery] = useState('');
@@ -23,6 +23,13 @@ export function FileTree({ entries, selected, onOpen }: { entries: TreeEntry[]; 
     return new Set(countFiles(t) <= AUTO_EXPAND_LIMIT ? allDirs(t) : []);
   });
   const toggleDir = (p: string) => setExpanded(s => { const n = new Set(s); if (n.has(p)) n.delete(p); else n.add(p); return n; });
+  // Open the folders on the way to the file or folder in the URL, then bring its row into view.
+  useEffect(() => {
+    if (!reveal) return;
+    const segs = reveal.split('/');
+    setExpanded(s => { const n = new Set(s); segs.forEach((_, i) => n.add(segs.slice(0, i + 1).join('/'))); return n; });
+    requestAnimationFrame(() => document.querySelector(`.tree [data-path="${CSS.escape(reveal)}"]`)?.scrollIntoView({ block: 'nearest' }));
+  }, [reveal]);
   const toggleFormat = (f: Format) => setFormats(s => { const n = new Set(s); if (n.has(f)) n.delete(f); else n.add(f); return n; });
   const searching = query.trim() !== '';
 
@@ -30,7 +37,7 @@ export function FileTree({ entries, selected, onOpen }: { entries: TreeEntry[]; 
     ...[...dir.dirs.values()].sort((a, b) => a.name.localeCompare(b.name)).flatMap(d => {
       const open = searching || expanded.has(d.path);
       return [
-        <div key={`d:${d.path}`} className="row" style={{ '--d': depth } as CSSProperties} role="treeitem" aria-expanded={open} tabIndex={0}
+        <div key={`d:${d.path}`} data-path={d.path} className={`row ${d.path === reveal ? 'sel' : ''}`} style={{ '--d': depth } as CSSProperties} role="treeitem" aria-expanded={open} tabIndex={0}
           onClick={() => toggleDir(d.path)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleDir(d.path); } }}>
           <span className={`tw ${open ? 'open' : ''}`}><Icon name="chev" /></span><span className="ico"><Icon name="folder" /></span><span className="name">{d.name}</span>
         </div>,
@@ -38,7 +45,7 @@ export function FileTree({ entries, selected, onOpen }: { entries: TreeEntry[]; 
       ];
     }),
     ...dir.files.sort((a, b) => a.name.localeCompare(b.name)).map(f => (
-      <div key={`f:${f.path}`} className={`row ${f.format ? '' : 'muted'} ${f.path === selected ? 'sel' : ''}`} style={{ '--d': depth } as CSSProperties}
+      <div key={`f:${f.path}`} data-path={f.path} className={`row ${f.format ? '' : 'muted'} ${f.path === selected ? 'sel' : ''}`} style={{ '--d': depth } as CSSProperties}
         role="treeitem" aria-selected={f.path === selected} tabIndex={f.format ? 0 : -1} title={f.format ? f.path : 'No 3D preview for this file type'}
         onClick={() => f.format && onOpen(f.path)} onKeyDown={e => { if (f.format && e.key === 'Enter') onOpen(f.path); }}>
         <span className="tw none" /><TypeBadge format={f.format} name={f.name} /><span className="name">{f.name}</span>

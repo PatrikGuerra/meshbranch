@@ -209,13 +209,27 @@ Funções do visualizador:
 
 ## 9. Endereços e navegação
 
-Formato do link (hash, para funcionar no GitHub Pages sem regra de servidor):
+O link usa o mesmo caminho do GitHub, depois de `#`. Ele sempre mostra o arquivo ou a pasta aberta.
 
-```
-https://<usuario>.github.io/meshbranch/#/owner/repo?ref=feature/x&path=cad/case.step
-```
+| GitHub | MeshBranch |
+|---|---|
+| `github.com/owner/repo` | `.../meshbranch/#/owner/repo` (branch padrão) |
+| `github.com/owner/repo/tree/feature/x` | `.../meshbranch/#/owner/repo/tree/feature/x` |
+| `github.com/owner/repo/tree/feature/x/cad` | `.../meshbranch/#/owner/repo/tree/feature/x/cad` |
+| `github.com/owner/repo/blob/feature/x/cad/case.step` | `.../meshbranch/#/owner/repo/blob/feature/x/cad/case.step` |
 
-- Na V1, `ref` pode ser branch ou SHA. Tags ficam para depois.
+Caminho reverso: ao abrir um link, o app separa a branch do caminho do arquivo.
+
+1. Se o resto tem um só pedaço (`tree/main`), ele é a branch. Custa 0 pedidos extras.
+2. Se começa com um SHA de 40 caracteres, o SHA é a referência. Custa 0 pedidos extras.
+3. Senão, o app busca a lista de branches (1 pedido a cada 100 branches, guardada por 2 minutos). Ele escolhe a branch **mais longa** que bate com o começo do caminho, como o GitHub faz. Exemplo: em `feature/x/cad/case.step`, a branch `feature/x` vence a branch `feature`.
+4. Se nenhuma branch bate, o primeiro pedaço vira a referência (pode ser tag ou SHA curto).
+
+Depois disso, a árvore abre até o arquivo ou a pasta. Uma pasta mostra a lista dos modelos dentro dela. Navegar dentro da mesma branch não gasta pedidos.
+
+- Colar na página inicial um link do GitHub (repo, branch, pasta ou arquivo) abre o mesmo lugar no MeshBranch.
+- O formato antigo `#/owner/repo?ref=<branch>&path=<arquivo>` ainda funciona e é trocado pelo novo.
+- Tags ficam para depois.
 - Botão "Copy link" copia o endereço atual.
 - Futuro: guardar no link também a câmera e as peças escondidas.
 

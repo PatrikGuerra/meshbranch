@@ -539,7 +539,7 @@ function switchBranch(b, path) {
 }
 function select(n) { state.selected = n; highlight(); renderModelTree(); }
 function isolate(n) { setVisible(state.root, false); setVisible(n, true); select(n); toast(`Isolated “${n.name}” · Show all to restore`); }
-function updateHash() { history.replaceState(null, '', `#/${REPO.owner}/${REPO.name}?ref=${encodeURIComponent(state.branch)}${state.file ? `&path=${encodeURIComponent(state.file)}` : ''}`); }
+function updateHash() { history.replaceState(null, '', `#/${REPO.owner}/${REPO.name}/${state.file ? 'blob' : 'tree'}/${state.branch}${state.file ? `/${state.file}` : ''}`); }
 let toastTimer;
 function toast(t) { const el = $('#toast'); el.textContent = t; el.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => el.hidden = true, 2200); }
 function openMenu() { renderBranch(); $('#branchMenu').hidden = false; $('#branchBtn').setAttribute('aria-expanded', 'true'); }
@@ -626,10 +626,14 @@ renderer.domElement.addEventListener('pointerdown', e => down.set(e.clientX, e.c
 renderer.domElement.addEventListener('pointerup', e => { if (modelGroup && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 4) select(pick(e) || null); });
 renderer.domElement.addEventListener('dblclick', e => { const n = modelGroup && pick(e); if (n) isolate(n); });
 
-// ---------- Boot (deep link: #/owner/repo?ref=<branch>&path=<file>) ----------
-const q = new URLSearchParams(location.hash.split('?')[1] || '');
-if (BRANCHES[q.get('ref')]) state.branch = q.get('ref');
-const startFile = q.get('path');
+// ---------- Boot (deep link mirrors GitHub: #/owner/repo/blob/<branch>/<file> or /tree/<branch>) ----------
+// The branch may hold slashes, so take the longest known branch that prefixes the rest, like GitHub does.
+const rest = (location.hash.match(/^#\/[^/]+\/[^/]+\/(?:blob|tree)\/(.+)$/) || [])[1]?.split('/').map(decodeURIComponent) || [];
+let startFile = null;
+for (let i = rest.length; i > 0; i--) {
+  const b = rest.slice(0, i).join('/');
+  if (BRANCHES[b]) { state.branch = b; startFile = rest.slice(i).join('/') || null; break; }
+}
 renderBranch(); renderBanner(); resize();
 if (!/^#\/[^/?]+\/[^/?]+/.test(location.hash)) showHome();
 else if (startFile && is3D(startFile) && BRANCHES[state.branch].files[startFile] !== undefined) openFile(startFile);

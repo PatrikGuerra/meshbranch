@@ -71,6 +71,17 @@ export async function resolveCommit(owner: string, repo: string, ref: string): P
   return (await api(`${repoPath(owner, repo)}/commits/${seg(ref)}`, { accept: 'application/vnd.github.sha', maxAgeMs: REF_MAX_AGE })).trim();
 }
 
+// 1 request per 100 branches. Only needed when a URL has a ref that could contain slashes.
+export async function listBranches(owner: string, repo: string, maxPages = 5): Promise<Set<string>> {
+  const names = new Set<string>();
+  for (let page = 1; page <= maxPages; page++) {
+    const list = JSON.parse(await api(`${repoPath(owner, repo)}/branches?per_page=100&page=${page}`, { maxAgeMs: REF_MAX_AGE })) as { name: string }[];
+    list.forEach(b => names.add(b.name));
+    if (list.length < 100) break;
+  }
+  return names;
+}
+
 export async function getTree(owner: string, repo: string, commitSha: string): Promise<Tree> {
   const t = JSON.parse(await api(`${repoPath(owner, repo)}/git/trees/${commitSha}?recursive=1`, { immutable: true })) as { tree: TreeEntry[]; truncated: boolean };
   return { entries: t.tree, truncated: t.truncated };

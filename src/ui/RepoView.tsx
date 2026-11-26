@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { Route } from '../app/route';
-import { download, getDefaultBranch, getTree, onRateLimit, rawUrl, resolveCommit, type RateLimit, type Tree } from '../github/client';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { buildHash, splitRefPath, type Route } from '../app/route';
+import { download, getDefaultBranch, getTree, GitHubError, listBranches, onRateLimit, rawUrl, resolveCommit, type RateLimit, type Tree } from '../github/client';
 import { FORMAT_LABEL, formatOf, isLfsPointer } from '../importers/formats';
 import { loadModel } from '../importers/load';
 import type { ModelStats, SceneView, View } from '../viewer/scene';
@@ -9,7 +9,7 @@ import { Icon } from './icons';
 import { Viewer } from './Viewer';
 
 type RepoRoute = Extract<Route, { kind: 'repo' }>;
-type RepoState = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; ref: string; sha: string; tree: Tree };
+type RepoState = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; ref: string; sha: string; tree: Tree; isDefault: boolean };
 type FileState =
   | { status: 'none' } | { status: 'loading'; step: string; progress?: number } | { status: 'error'; message: string }
   | { status: 'big'; size: number } | { status: 'lfs' } | { status: 'ready'; stats: ModelStats };
@@ -26,10 +26,13 @@ function joinPath(dir: string, rel: string): string {
 }
 
 export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
-  route: RepoRoute; navigate: (r: Route) => void; dark: boolean; onToggleTheme: () => void; onHome: () => void;
+  route: RepoRoute; navigate: (r: Route, isFile?: boolean) => void; dark: boolean; onToggleTheme: () => void; onHome: () => void;
 }) {
-  const { owner, repo, ref, path } = route;
+  const { owner, repo, rest } = route;
   const [state, setState] = useState<RepoState>({ status: 'loading' });
+  const [target, setTarget] = useState(''); // file or folder path inside the ref
+  const stateRef = useRef(state);
+  stateRef.current = state;
   const [file, setFile] = useState<FileState>({ status: 'none' });
   const [view, setView] = useState<SceneView | null>(null);
   const [rate, setRate] = useState<RateLimit | null>(null);
@@ -41,26 +44,52 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
   useEffect(() => onRateLimit(setRate), []);
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(''), 2200); return () => clearTimeout(t); }, [toast]);
 
-  // Repository: 1 call for the default branch (only without ?ref), 1 for the commit SHA, 0-1 for the tree (cached by SHA).
+  // The URL holds "<ref>/<path>" like GitHub. Moving inside the loaded ref costs nothing; a new ref costs
+  // 0-1 call for the branch list (only when the ref could hold a slash), 1 for the commit SHA and 0-1 for the tree.
   useEffect(() => {
+    const cur = stateRef.current;
+    if (cur.status === 'ready') {
+      if (!rest && cur.isDefault) { setTarget(''); return; }
+      // Git forbids a branch "a" next to a branch "a/b", so a prefix match is always the loaded branch.
+      if (rest && (rest === cur.ref || rest.startsWith(cur.ref + '/'))) { setTarget(rest.slice(cur.ref.length + 1)); return; }
+    }
     let live = true;
     setState({ status: 'loading' });
+    setTarget('');
     (async () => {
-      const r = ref ?? await getDefaultBranch(owner, repo);
-      const sha = await resolveCommit(owner, repo, r);
+      let ref: string, p = '';
+      if (!rest) ref = await getDefaultBranch(owner, repo);
+      else if (!rest.includes('/') || /^[0-9a-f]{40}\//i.test(rest)) ({ ref, path: p } = splitRefPath(rest, new Set()));
+      else ({ ref, path: p } = splitRefPath(rest, await listBranches(owner, repo)));
+      const sha = await resolveCommit(owner, repo, ref).catch((e: unknown) => {
+        throw e instanceof GitHubError && e.status === 404 ? new GitHubError(`No branch or commit named “${ref}” in ${owner}/${repo}.`, 404) : e;
+      });
       const tree = await getTree(owner, repo, sha);
-      if (live) setState({ status: 'ready', ref: r, sha, tree });
+      if (live) { setState({ status: 'ready', ref, sha, tree, isDefault: !rest }); setTarget(p); }
     })().catch((e: Error) => { if (live) setState({ status: 'error', message: e.message }); });
     return () => { live = false; };
-  }, [owner, repo, ref]);
+  }, [owner, repo, rest]);
 
-  // Open the file in ?path. Files come from raw.githubusercontent.com, pinned to the commit SHA.
+  const ready = state.status === 'ready' ? state : null;
+  const entry = ready && target ? ready.tree.entries.find(e => e.path === target) : undefined;
+  const path = entry?.type === 'blob' ? target : '';
+  const dir = entry?.type === 'tree' ? target : '';
+
+  // Keep the address bar canonical: blob/ for files, tree/ for branches and folders.
+  useEffect(() => {
+    if (!ready || !rest) return;
+    const canonical = buildHash({ kind: 'repo', owner, repo, rest: target ? `${ready.ref}/${target}` : ready.ref }, !!path);
+    if (decodeURIComponent(location.hash) !== decodeURIComponent(canonical)) history.replaceState(null, '', canonical);
+  }, [ready, rest, target, path, owner, repo]);
+
+  // Open the file. Files come from raw.githubusercontent.com, pinned to the commit SHA.
   useEffect(() => {
     if (state.status !== 'ready' || !view) return;
-    if (!path) { view.setModel(null); setFile({ status: 'none' }); return; }
-    const entry = state.tree.entries.find(e => e.path === path && e.type === 'blob');
+    const entry = target ? state.tree.entries.find(e => e.path === target) : undefined;
+    if (!target || entry?.type === 'tree') { view.setModel(null); setFile({ status: 'none' }); return; }
+    const path = target;
     const format = formatOf(path);
-    if (!entry || !format) { view.setModel(null); setFile({ status: 'error', message: entry ? 'This file type cannot be previewed.' : 'This file is not on this branch.' }); return; }
+    if (!entry || !format) { view.setModel(null); setFile({ status: 'error', message: entry ? 'This file type cannot be previewed.' : 'This file or folder is not on this branch.' }); return; }
     if ((entry.size ?? 0) > BIG_FILE && !allowBig.has(path)) { view.setModel(null); setFile({ status: 'big', size: entry.size! }); return; }
 
     const ac = new AbortController();
@@ -96,7 +125,7 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
       setFile({ status: 'error', message: e.message || 'This file could not be opened.' });
     });
     return () => ac.abort();
-  }, [state, view, path, owner, repo, allowBig]);
+  }, [state, view, target, owner, repo, allowBig]);
 
   useEffect(() => {
     if (!view) return;
@@ -113,13 +142,13 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
     return () => removeEventListener('keydown', onKey);
   }, [view]);
 
-  const open = (p: string) => navigate({ ...route, path: p });
+  const open = (p: string) => { if (ready) navigate({ kind: 'repo', owner, repo, rest: `${ready.ref}/${p}` }, true); };
   const models = useMemo(() => state.status === 'ready'
-    ? state.tree.entries.filter(e => e.type === 'blob' && formatOf(e.path)).map(e => e.path).sort() : [], [state]);
+    ? state.tree.entries.filter(e => e.type === 'blob' && formatOf(e.path) && (!dir || e.path.startsWith(dir + '/'))).map(e => e.path).sort() : [], [state, dir]);
   const copyLink = () => navigator.clipboard.writeText(location.href).then(() => setToast('Link copied'), () => setToast(location.href));
   const fmt = path ? formatOf(path) : null;
-  const ready = state.status === 'ready' ? state : null;
-  const ghUrl = ready && path ? `https://github.com/${owner}/${repo}/blob/${ready.sha}/${path}` : `https://github.com/${owner}/${repo}`;
+  const ghUrl = `https://github.com/${owner}/${repo}` + (ready
+    ? `/${path ? 'blob' : 'tree'}/${[ready.ref, target].filter(Boolean).join('/').split('/').map(encodeURIComponent).join('/')}` : '');
 
   return (
     <div className="app">
@@ -138,7 +167,7 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
 
       <main className="layout">
         <aside className="sidebar left" aria-label="Repository files">
-          {ready ? <FileTree key={ready.sha} entries={ready.tree.entries} selected={path} onOpen={open} />
+          {ready ? <FileTree key={ready.sha} entries={ready.tree.entries} selected={path} reveal={target} onOpen={open} />
             : <div className="tree-empty">{state.status === 'loading' ? 'Loading files…' : ''}</div>}
         </aside>
 
@@ -150,7 +179,7 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
                 {path.split('/').slice(0, -1).map((s, i) => <span key={i} className="seg">{s} /</span>)}
                 <strong>{path.split('/').pop()}</strong>
                 <a className="btn ghost small" href={ghUrl} target="_blank" rel="noopener">View on GitHub</a>
-              </> : <span className="seg">No file selected</span>}
+              </> : <>{dir && <><Icon name="folder" />{dir.split('/').map((s, i) => <span key={i} className="seg">{s} /</span>)}</>}<span className="seg">No file selected</span></>}
             </div>
             <div className="toolbar" role="toolbar" aria-label="View">
               {(['fit', 'iso', 'top', 'front', 'right'] as View[]).map(v => <button key={v} className="tb" onClick={() => view?.fit(v)}>{v[0].toUpperCase() + v.slice(1)}</button>)}
@@ -166,7 +195,7 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
             {ready && file.status === 'none' && (
               <div className="overlay"><div className="card list-card">
                 <header><h2>{models.length ? 'Select a 3D file' : 'No 3D files here'}</h2>
-                  <p>{models.length ? <>{models.length.toLocaleString('en-US')} models on <span className="mono">{ready.ref}</span>. Pick one here or in the file tree.</> : <>This branch has no STEP, STL or OBJ files.</>}</p></header>
+                  <p>{models.length ? <>{models.length.toLocaleString('en-US')} models {dir && <>in <span className="mono">{dir}</span> </>}on <span className="mono">{ready.ref}</span>. Pick one here or in the file tree.</> : <>{dir ? 'This folder' : 'This branch'} has no STEP, STL or OBJ files.</>}</p></header>
                 {models.length > 0 && <div className="card-list">
                   {models.slice(0, EMPTY_LIST_LIMIT).map(p => <button key={p} className="row" onClick={() => open(p)}><TypeBadge format={formatOf(p)} name={p} /><span className="name mono">{p}</span></button>)}
                   {models.length > EMPTY_LIST_LIMIT && <div className="tree-empty">and {(models.length - EMPTY_LIST_LIMIT).toLocaleString('en-US')} more in the file tree</div>}
@@ -185,7 +214,7 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
         <span title="GitHub allows 60 API requests per hour per IP without sign-in. File downloads do not count.">
           <span className={`dotc ${rate && rate.remaining < 10 ? 'low' : ''}`} />api.github.com · {rate ? `${rate.remaining} / ${rate.limit} requests left · resets ${time(rate.reset)}` : 'no API requests this visit (answered from cache)'}
         </span>
-        {file.status === 'ready' && <span className="r">{file.stats.parts.toLocaleString('en-US')} {file.stats.parts === 1 ? 'part' : 'parts'} · {Math.round(file.stats.triangles).toLocaleString('en-US')} triangles · {file.stats.size.x.toFixed(1)} × {file.stats.size.y.toFixed(1)} × {file.stats.size.z.toFixed(1)} mm</span>}
+        {file.status === 'ready' && <span className="r">{file.stats.parts.toLocaleString('en-US')} {file.stats.parts === 1 ? 'part' : 'parts'} · {Math.round(file.stats.triangles).toLocaleString('en-US')} {Math.round(file.stats.triangles) === 1 ? 'triangle' : 'triangles'} · {file.stats.size.x.toFixed(1)} × {file.stats.size.y.toFixed(1)} × {file.stats.size.z.toFixed(1)} mm</span>}
       </footer>
       {toast && <div className="toast" role="status">{toast}</div>}
     </div>
