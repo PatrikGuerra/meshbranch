@@ -2,6 +2,10 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { ViewportGizmo, type GizmoOptions } from 'three-viewport-gizmo';
 
+// Z-up for everything, like CAD tools. The view cube reads this global to orient its clicks and drags;
+// without it, a click on a face rolls the camera around a Y-up axis and the next orbit jumps.
+THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
+
 export type View = 'fit' | 'iso' | 'top' | 'front' | 'right';
 export type ViewMode = 'solid' | 'edges' | 'wire';
 export type ModelStats = { triangles: number; size: THREE.Vector3 };
@@ -65,6 +69,12 @@ export class SceneView {
     fill.position.set(-1.2, 1, 0.6);
     this.scene.add(hemi, key, fill);
     this.gizmo = new ViewportGizmo(this.camera, this.renderer, cubeOptions(el, false));
+    // Looking straight down Z with Z as "up" has no unique roll, so the library picks one 90° off from the
+    // toolbar's Top view. Tilt that click a hair toward -Y, like DIRS.top, so FRONT sits at the bottom.
+    // shortcut: patches a private method of three-viewport-gizmo 2.2.0; re-check if the version changes.
+    const gz = this.gizmo as unknown as { _setOrientation(p: THREE.Vector3): void };
+    const setOrientation = gz._setOrientation.bind(this.gizmo);
+    gz._setOrientation = p => setOrientation(Math.hypot(p.x, p.y) < 1e-6 ? new THREE.Vector3(0, -0.001 * Math.abs(p.z), p.z) : p);
     this.gizmo.attachControls(this.controls);
     this.gizmo.addEventListener('change', () => { this.dirty = true; });
     this.resizeObserver = new ResizeObserver(() => this.resize());
