@@ -157,6 +157,8 @@ Regras para não estourar:
 5. **Contador visível.** A barra de status lê `X-RateLimit-Remaining` e `X-RateLimit-Reset` e mostra "57 / 60 · resets 10:42".
 6. **Limite atingido.** O app avisa em um banner com o horário da liberação. Arquivos já em cache continuam abrindo. Os downloads pelo `raw` continuam funcionando, se a árvore estiver em cache.
 
+Cada troca de branch compara de novo, agora a partir da nova branch (até 10 pedidos). Pares de commits já comparados vêm do cache e não gastam nada. Branches que ficaram de fora têm um botão "Check" no seletor (1 pedido cada).
+
 O limite é por IP. Em rede compartilhada (empresa, faculdade), outras pessoas podem gastar o mesmo limite.
 
 Saída futura sem backend: uma GitHub Action opcional no repositório do usuário gera `.meshbranch/index.json` a cada push (branches, árvores, arquivos mais novos e últimos commits). O MeshBranch baixa esse arquivo pelo `raw`, que custa 0. Com ele, o repo não gasta nada do limite.
@@ -323,7 +325,7 @@ meshbranch/
 | F0 | Plano e mock | Este documento e `mock/index.html` (feito). |
 | F1 | MVP público (feito) | Colar URL de repo público, ver a árvore e abrir STEP, STL e OBJ. Publicado no Pages. |
 | F2 | Peças (feito) | Árvore de peças com olho, isolar, seleção nos dois sentidos, propriedades. Cor, transparência e modo de vista por peça (R16). O link direto já saiu na F1. |
-| F3 | Branches | Seletor, troca mantendo o arquivo, cálculo de "mais novo", banner e "Compare". |
+| F3 | Branches (feito) | Seletor, troca mantendo o arquivo, cálculo de "mais novo", banner e "Compare". |
 | F4 | LFS e cache | Arquivos LFS, cache por SHA, contador e banner de limite. |
 | F5 | Acabamento de produto | Tema, acessibilidade, estados vazios e de erro, página inicial com exemplos. Fecha a **V1**. |
 | V1.1 | Mais formatos | Abrir 3MF, glTF/GLB e PLY, com árvore de peças, filtros e testes com arquivos de exemplo. |

@@ -12,7 +12,9 @@ export function TypeBadge({ format, name }: { format: Format | null; name: strin
   return <span className="ft ft-other">{ext}</span>;
 }
 
-export function FileTree({ entries, selected, reveal, onOpen, onCollapse }: { entries: TreeEntry[]; selected?: string; reveal?: string; onOpen: (path: string) => void; onCollapse: () => void }) {
+export function FileTree({ entries, selected, reveal, newer, onOpen, onCollapse }: {
+  entries: TreeEntry[]; selected?: string; reveal?: string; newer?: ReadonlyMap<string, string[]>; onOpen: (path: string) => void; onCollapse: () => void;
+}) {
   const [only3d, setOnly3d] = useState(true);
   const [formats, setFormats] = useState<Set<Format>>(() => new Set(FORMATS));
   const [query, setQuery] = useState('');
@@ -49,6 +51,7 @@ export function FileTree({ entries, selected, reveal, onOpen, onCollapse }: { en
         role="treeitem" aria-selected={f.path === selected} tabIndex={f.format ? 0 : -1} title={f.format ? f.path : 'No 3D preview for this file type'}
         onClick={() => f.format && onOpen(f.path)} onKeyDown={e => { if (f.format && e.key === 'Enter') onOpen(f.path); }}>
         <span className="tw none" /><TypeBadge format={f.format} name={f.name} /><span className="name">{f.name}</span>
+        {newer?.get(f.path) && <span className="newer" title={`Newer on ${newer.get(f.path)!.join(', ')}`} />}
       </div>
     )),
   ];

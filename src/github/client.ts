@@ -29,9 +29,9 @@ const time = (d: Date) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2
 
 // Without a token, even a 304 uses one request (checked 2026-11-26), so the cache answers first:
 // immutable URLs (pinned to a commit SHA) never refetch; others refetch after maxAgeMs.
-async function api(path: string, opts: { accept?: string; immutable?: boolean; maxAgeMs?: number } = {}): Promise<string> {
+async function api(path: string, opts: { accept?: string; immutable?: boolean; maxAgeMs?: number; noCache?: boolean } = {}): Promise<string> {
   const url = API + path;
-  const cached = readCache(url);
+  const cached = opts.noCache ? null : readCache(url);
   if (cached && (opts.immutable || (opts.maxAgeMs && Date.now() - (cached.at ?? 0) < opts.maxAgeMs))) return cached.body;
   const headers: Record<string, string> = { Accept: opts.accept ?? 'application/vnd.github+json' };
   if (cached?.etag) headers['If-None-Match'] = cached.etag;
@@ -46,7 +46,7 @@ async function api(path: string, opts: { accept?: string; immutable?: boolean; m
   if (res.status === 304 && cached) { writeCache(url, { ...cached, at: Date.now() }); return cached.body; }
   if (res.ok) {
     const body = await res.text();
-    writeCache(url, { etag: res.headers.get('etag') ?? undefined, body, at: Date.now() });
+    if (!opts.noCache) writeCache(url, { etag: res.headers.get('etag') ?? undefined, body, at: Date.now() });
     return body;
   }
   if ((res.status === 403 || res.status === 429) && remaining === '0') {
@@ -71,16 +71,42 @@ export async function resolveCommit(owner: string, repo: string, ref: string): P
   return (await api(`${repoPath(owner, repo)}/commits/${seg(ref)}`, { accept: 'application/vnd.github.sha', maxAgeMs: REF_MAX_AGE })).trim();
 }
 
-// 1 request per 100 branches. Only needed when a URL has a ref that could contain slashes.
-export async function listBranches(owner: string, repo: string, maxPages = 5): Promise<Set<string>> {
-  const names = new Set<string>();
+// 1 request per 100 branches, kept for 2 minutes (fresh: ask GitHub now). Returns name -> head commit SHA.
+export async function listBranches(owner: string, repo: string, { fresh = false, maxPages = 5 } = {}): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
   for (let page = 1; page <= maxPages; page++) {
-    const list = JSON.parse(await api(`${repoPath(owner, repo)}/branches?per_page=100&page=${page}`, { maxAgeMs: REF_MAX_AGE })) as { name: string }[];
-    list.forEach(b => names.add(b.name));
+    const list = JSON.parse(await api(`${repoPath(owner, repo)}/branches?per_page=100&page=${page}`, { maxAgeMs: fresh ? 0 : REF_MAX_AGE })) as { name: string; commit: { sha: string } }[];
+    list.forEach(b => out.set(b.name, b.commit.sha));
     if (list.length < 100) break;
   }
-  return names;
+  return out;
 }
+
+export type ChangedFile = { path: string; status: 'added' | 'modified' | 'renamed' };
+export type Comparison = { ahead: number; files: ChangedFile[]; truncated: boolean };
+const COMPARE_PREFIX = 'mb:cmp:';
+const compareKey = (owner: string, repo: string, base: string, head: string) => `${COMPARE_PREFIX}${owner}/${repo}/${base}...${head}`;
+
+// A comparison of two commit SHAs never changes, so only the short summary is kept (the full answer holds patches).
+export function cachedComparison(owner: string, repo: string, base: string, head: string): Comparison | null {
+  try { const s = localStorage.getItem(compareKey(owner, repo, base, head)); return s ? JSON.parse(s) as Comparison : null; } catch { return null; }
+}
+
+// Files created or changed on head since it split from base (GitHub's base...head). 1 request, then cached forever.
+export async function compareCommits(owner: string, repo: string, base: string, head: string): Promise<Comparison> {
+  const hit = cachedComparison(owner, repo, base, head);
+  if (hit) return hit;
+  const body = JSON.parse(await api(`${repoPath(owner, repo)}/compare/${base}...${head}`, { noCache: true })) as
+    { ahead_by: number; files?: { filename: string; status: string }[] };
+  const files = (body.files ?? []).flatMap((f): ChangedFile[] =>
+    f.status === 'removed' || f.status === 'unchanged' ? []
+      : [{ path: f.filename, status: f.status === 'added' || f.status === 'copied' ? 'added' : f.status === 'renamed' ? 'renamed' : 'modified' }]);
+  const out: Comparison = { ahead: body.ahead_by, files, truncated: (body.files?.length ?? 0) >= 300 }; // GitHub lists at most 300 files
+  try { localStorage.setItem(compareKey(owner, repo, base, head), JSON.stringify(out)); } catch { /* storage full: run without cache */ }
+  return out;
+}
+
+export const currentRate = () => rate;
 
 export async function getTree(owner: string, repo: string, commitSha: string): Promise<Tree> {
   const t = JSON.parse(await api(`${repoPath(owner, repo)}/git/trees/${commitSha}?recursive=1`, { immutable: true })) as { tree: TreeEntry[]; truncated: boolean };
