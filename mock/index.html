@@ -1,0 +1,639 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MeshBranch · 3D viewer for GitHub repositories</title>
+<script>document.documentElement.dataset.theme = localStorage.getItem('meshbranch-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');</script>
+<style>
+:root{--bg:#f6f7f9;--panel:#fff;--panel-2:#fafbfc;--border:#e3e6eb;--border-strong:#d3d8df;--text:#111827;--muted:#6b7280;--faint:#9aa1ad;--accent:#0f766e;--accent-weak:#e6f4f2;--accent-text:#0b5e58;--on-accent:#fff;--warn:#b45309;--warn-weak:#fff6e8;--warn-border:#f4d6a6;--hover:#f1f3f6;--sel:#e8f3f1;--vp-1:#fdfdfe;--vp-2:#eceff4;--shadow:0 8px 30px rgba(17,24,39,.12),0 2px 6px rgba(17,24,39,.06);--step:#2563eb;--stl:#c2410c;--obj:#7c3aed;color-scheme:light}
+[data-theme=dark]{--bg:#0c0e12;--panel:#12151b;--panel-2:#151922;--border:#232834;--border-strong:#2e3442;--text:#e7e9ee;--muted:#9097a6;--faint:#646c7c;--accent:#2dd4bf;--accent-weak:#0f2a28;--accent-text:#5eead4;--on-accent:#062824;--warn:#f5b04c;--warn-weak:#241b0f;--warn-border:#4a3519;--hover:#1a1f29;--sel:#13302d;--vp-1:#1a1f28;--vp-2:#0d1015;--shadow:0 10px 30px rgba(0,0,0,.5);--step:#60a5fa;--stl:#fb923c;--obj:#a78bfa;color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%}
+body{font:13px/1.45 Inter,"Segoe UI",system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:none}
+button{font:inherit;color:inherit}
+a{color:var(--accent-text);text-decoration:none}a:hover{text-decoration:underline}
+.mono{font-family:"JetBrains Mono",ui-monospace,Consolas,monospace;font-size:12.5px}
+.app{display:grid;grid-template-rows:52px auto 1fr 28px;height:100vh}
+.topbar{display:flex;align-items:center;gap:14px;padding:0 14px;background:var(--panel);border-bottom:1px solid var(--border)}
+.brand{display:flex;align-items:center;gap:8px;font-weight:650;font-size:15px;letter-spacing:-.01em;padding-right:14px;border-right:1px solid var(--border)}
+.brand svg{width:20px;height:20px;color:var(--accent)}
+.crumbs{display:flex;align-items:center;gap:6px;color:var(--muted)}
+.crumbs strong{color:var(--text);font-weight:600}
+.pill{font-size:11px;border:1px solid var(--border-strong);border-radius:999px;padding:0 7px;color:var(--muted)}
+.btn{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border:1px solid var(--border-strong);background:var(--panel);border-radius:7px;cursor:pointer;white-space:nowrap}
+.btn:hover{background:var(--hover)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:600}
+.btn.primary:hover{filter:brightness(1.05)}
+.btn.ghost{border-color:transparent;background:none}
+.icon-btn{width:30px;height:30px;display:grid;place-items:center;border:0;background:none;border-radius:7px;cursor:pointer;color:var(--muted)}
+.icon-btn:hover{background:var(--hover);color:var(--text)}
+.branch-wrap{position:relative}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--warn);box-shadow:0 0 0 3px var(--warn-weak)}
+.menu{position:absolute;top:36px;left:0;width:380px;background:var(--panel);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow);z-index:20;overflow:hidden}
+.menu-head{padding:10px 12px;border-bottom:1px solid var(--border);font-weight:600;display:flex;justify-content:space-between;align-items:center}
+.menu-item{display:flex;align-items:center;gap:10px;width:100%;padding:9px 12px;border:0;background:none;text-align:left;cursor:pointer}
+.menu-item:hover{background:var(--hover)}
+.menu-item.cur{background:var(--sel)}
+.menu-item .grow{flex:1;min-width:0}
+.menu-item .meta{color:var(--muted);font-size:11.5px}
+.check{width:16px;color:var(--accent)}
+.menu-foot{padding:8px 12px;border-top:1px solid var(--border);color:var(--faint);font-size:11.5px;background:var(--panel-2)}
+.badge{font-size:11px;font-weight:600;padding:1px 7px;border-radius:999px;background:var(--warn-weak);color:var(--warn);border:1px solid var(--warn-border);white-space:nowrap}
+.tag{font-size:10.5px;padding:0 6px;border:1px solid var(--border-strong);border-radius:4px;color:var(--muted);margin-left:6px}
+.token{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:12px;padding-left:12px;border-left:1px solid var(--border)}
+.ok{width:7px;height:7px;border-radius:50%;background:#16a34a;display:inline-block}
+.spacer{flex:1}
+.banner{display:flex;align-items:center;gap:10px;padding:7px 14px;background:var(--warn-weak);border-bottom:1px solid var(--warn-border)}
+.banner>svg{color:var(--warn)}
+.banner .btn{height:26px;font-size:12px}
+.banner .grow{flex:1}
+.layout{display:grid;grid-template-columns:272px 1fr 300px;min-height:0}
+.sidebar{background:var(--panel);display:flex;flex-direction:column;min-height:0}
+.left{border-right:1px solid var(--border)}.right{border-left:1px solid var(--border)}
+.panel-head{display:flex;align-items:center;justify-content:space-between;padding:11px 12px 8px;font-size:11px;font-weight:650;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.panel-head .actions{display:flex;gap:2px;text-transform:none;letter-spacing:0;font-weight:500}
+.link-btn{border:0;background:none;color:var(--muted);cursor:pointer;font-size:12px;padding:2px 6px;border-radius:5px}
+.link-btn:hover{color:var(--text);background:var(--hover)}
+.switch{display:flex;align-items:center;gap:6px;text-transform:none;letter-spacing:0;font-weight:500;font-size:12px;cursor:pointer}
+.switch input{accent-color:var(--accent)}
+.search{padding:0 10px 8px}
+.search input{width:100%;height:30px;border:1px solid var(--border-strong);background:var(--panel-2);border-radius:7px;padding:0 10px;color:var(--text);outline:none;font:inherit}
+.search input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-weak)}
+.chips{display:flex;gap:6px;padding:0 10px 10px;border-bottom:1px solid var(--border)}
+.chip{height:24px;padding:0 9px;border-radius:999px;border:1px solid var(--border-strong);background:none;cursor:pointer;font-size:11.5px;font-weight:600;color:var(--faint)}
+.chip[aria-pressed=true]{color:var(--text);background:var(--hover)}
+.tree{overflow:auto;flex:1;padding:4px 0}
+.row{display:flex;align-items:center;gap:7px;height:28px;padding:0 10px 0 calc(8px + var(--d)*14px);cursor:pointer;white-space:nowrap;user-select:none}
+.row:hover{background:var(--hover)}
+.row.sel{background:var(--sel);box-shadow:inset 2px 0 0 var(--accent)}
+.row.dim .name,.row.dim .ico{color:var(--faint)}
+.row.muted{color:var(--faint);cursor:default}
+.row .ico{color:var(--muted);display:grid}
+.tw{width:14px;display:grid;place-items:center;color:var(--faint);transition:transform .12s}
+.tw svg{width:12px;height:12px}.tw.open{transform:rotate(90deg)}.tw.none{visibility:hidden}
+.name{overflow:hidden;text-overflow:ellipsis;flex:1}
+.ft{font:700 9px/1 "JetBrains Mono",ui-monospace,Consolas,monospace;padding:3px 0;border-radius:4px;width:30px;text-align:center;border:1px solid currentColor;flex:none}
+.ft-step{color:var(--step)}.ft-stl{color:var(--stl)}.ft-obj{color:var(--obj)}.ft-other{color:var(--faint);border-style:dashed}
+.age{color:var(--faint);font-size:11.5px}
+.newer{width:7px;height:7px;border-radius:50%;background:var(--warn);flex:none}
+.eye{border:0;background:none;padding:2px;border-radius:4px;color:var(--muted);cursor:pointer;display:grid}
+.eye:hover{background:var(--border);color:var(--text)}.eye.mixed{opacity:.5}
+.cnt{color:var(--faint);font-size:11px}
+.left-foot{padding:8px 12px;border-top:1px solid var(--border);color:var(--faint);font-size:11.5px}
+.stage{display:flex;flex-direction:column;min-width:0;min-height:0}
+.stage-head{display:flex;align-items:center;justify-content:space-between;gap:12px;height:44px;padding:0 12px;border-bottom:1px solid var(--border);background:var(--panel)}
+.path{display:flex;align-items:center;gap:6px;min-width:0;white-space:nowrap;overflow:hidden}
+.path .seg{color:var(--muted)}.path strong{font-weight:600}
+.toolbar{display:flex;align-items:center;gap:2px;background:var(--panel-2);border:1px solid var(--border);border-radius:8px;padding:2px}
+.tb{height:26px;padding:0 9px;border:0;background:none;border-radius:6px;cursor:pointer;color:var(--muted);font-size:12px}
+.tb:hover{color:var(--text);background:var(--hover)}
+.tb[aria-pressed=true]{background:var(--panel);color:var(--text);box-shadow:0 0 0 1px var(--border-strong)}
+.sep{width:1px;height:16px;background:var(--border-strong);margin:0 4px}
+.viewport{position:relative;flex:1;min-height:0;background:radial-gradient(120% 90% at 50% 15%,var(--vp-1),var(--vp-2))}
+.viewport canvas{display:block;width:100%;height:100%;outline:none}
+.loading{position:absolute;inset:0;display:grid;place-items:center;background:color-mix(in srgb,var(--vp-2) 55%,transparent);backdrop-filter:blur(2px)}
+.loader{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--panel);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow)}
+.spin{width:14px;height:14px;border:2px solid var(--border-strong);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation:none}.tw{transition:none}}
+.hint{position:absolute;left:12px;bottom:10px;color:var(--faint);font-size:11.5px;pointer-events:none}
+.error{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);text-align:center;padding:24px}
+.props{margin:0;padding:2px 12px 10px}
+.prop{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px dashed var(--border)}
+.prop dt{color:var(--muted)}.prop dd{margin:0;text-align:right}
+.commit{display:flex;gap:10px;padding:12px;border-top:1px solid var(--border)}
+.commit .msg{font-weight:500}.commit .meta{color:var(--muted);font-size:12px}
+.avatar{width:26px;height:26px;border-radius:50%;background:var(--accent-weak);color:var(--accent-text);display:grid;place-items:center;font-size:10.5px;font-weight:700;flex:none}
+.notice{margin:0 12px 12px;padding:10px 12px;border:1px solid var(--warn-border);background:var(--warn-weak);border-radius:8px;font-size:12px;display:grid;gap:8px}
+.notice .btn{height:26px;font-size:12px;justify-self:start}
+.model-wrap{flex:1;min-height:0;display:flex;flex-direction:column;border-bottom:1px solid var(--border)}
+.statusbar{display:flex;align-items:center;gap:18px;padding:0 12px;background:var(--panel);border-top:1px solid var(--border);color:var(--muted);font-size:11.5px;white-space:nowrap;overflow:hidden}
+.statusbar .r{margin-left:auto}
+.modal{position:fixed;inset:0;background:rgba(10,12,16,.45);display:grid;place-items:center;z-index:50}
+.dialog{width:min(680px,92vw);background:var(--panel);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);overflow:hidden}
+.dialog header{padding:14px 16px;border-bottom:1px solid var(--border)}
+.dialog h3{margin:0 0 2px;font-size:14px}.dialog header p{margin:0;color:var(--muted);font-size:12px}
+.dialog table{width:100%;border-collapse:collapse}
+.dialog td,.dialog th{padding:9px 16px;border-bottom:1px solid var(--border);text-align:left}
+.dialog th{font-size:11px;text-transform:uppercase;color:var(--muted);letter-spacing:.05em;font-weight:600}
+.dialog footer{padding:12px 16px;display:flex;justify-content:flex-end;gap:8px;background:var(--panel-2)}
+.st-new{color:var(--accent-text);font-weight:600}.st-mod{color:var(--warn);font-weight:600}
+.home{position:fixed;inset:0;z-index:40;background:radial-gradient(90% 60% at 50% 0%,var(--accent-weak),transparent 70%),var(--bg);display:flex;flex-direction:column;overflow:auto}
+.home-top{display:flex;align-items:center;justify-content:space-between;padding:14px 22px}
+.home-main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;text-align:center}
+.home h1{margin:0 0 10px;font-size:34px;line-height:1.15;letter-spacing:-.025em;font-weight:700;max-width:640px}
+.home .lead{margin:0 0 28px;color:var(--muted);font-size:15px;max-width:520px}
+.home-form{display:flex;gap:8px;width:min(560px,100%);padding:6px;background:var(--panel);border:1px solid var(--border-strong);border-radius:12px;box-shadow:var(--shadow)}
+.home-form:focus-within{border-color:var(--accent)}
+.home-form input{flex:1;border:0;background:none;outline:none;color:var(--text);font:inherit;font-size:14px;padding:0 10px;min-width:0}
+.home-form .btn{height:38px;padding:0 16px}
+.home-err{color:#dc2626;font-size:12.5px;min-height:18px;margin-top:8px}
+.examples{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:6px}
+.examples span{color:var(--faint);font-size:12px;align-self:center}
+.ex{height:28px;padding:0 11px;border-radius:999px;border:1px solid var(--border-strong);background:var(--panel);cursor:pointer;font-size:12px}
+.ex:hover{border-color:var(--accent)}
+.features{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;width:min(820px,100%);margin-top:56px;text-align:left}
+.feature{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px}
+.feature svg{width:20px;height:20px;color:var(--accent)}
+.feature h3{margin:10px 0 4px;font-size:13.5px}.feature p{margin:0;color:var(--muted);font-size:12.5px}
+.home-foot{padding:14px 22px;color:var(--faint);font-size:12px;display:flex;justify-content:space-between;border-top:1px solid var(--border)}
+@media (max-width:720px){.features{grid-template-columns:1fr}.home h1{font-size:26px}}
+.brand-link{cursor:pointer}
+.empty{position:absolute;inset:0;display:grid;place-items:center;padding:24px}
+.empty-card{width:min(460px,100%);background:var(--panel);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);overflow:hidden}
+.empty-card header{padding:18px 18px 12px}
+.empty-card h2{margin:0 0 4px;font-size:15px;font-weight:650}
+.empty-card p{margin:0;color:var(--muted);font-size:12.5px}
+.empty-list{border-top:1px solid var(--border);max-height:280px;overflow:auto}
+.empty-list .row{--d:0;padding-left:18px;height:34px}
+.tree-empty{padding:14px 12px;color:var(--faint);font-size:12.5px}
+.toast{position:fixed;bottom:44px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--panel);padding:8px 14px;border-radius:8px;font-size:12.5px;box-shadow:var(--shadow);z-index:60}
+</style>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.170.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.170.0/examples/jsm/"}}</script>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand brand-link" id="brandLink" title="Home"><svg viewBox="0 0 24 24"><path d="M12 2l9 5v10l-9 5-9-5V7z"/><path d="M12 22V12M21 7l-9 5-9-5"/></svg>MeshBranch</div>
+    <nav class="crumbs" aria-label="Repository">
+      <svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h12v15H6a2 2 0 0 0-2 2z"/><path d="M4 20a2 2 0 0 0 2 1h12v-3"/></svg>
+      <span>PatrikGuerra</span><span>/</span><strong>orange-pi-zero3-case</strong><span class="pill">Public</span>
+    </nav>
+    <div class="branch-wrap">
+      <button id="branchBtn" class="btn" aria-haspopup="menu" aria-expanded="false">
+        <svg viewBox="0 0 24 24"><circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="7" r="2"/><path d="M6 7v10M18 9c0 5-7 4-11 8"/></svg>
+        <span id="branchName" class="mono"></span><span id="branchDot" class="dot" hidden></span>
+        <svg viewBox="0 0 24 24" style="width:12px;height:12px"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <div id="branchMenu" class="menu" role="menu" hidden></div>
+    </div>
+    <div class="spacer"></div>
+    <button id="themeBtn" class="icon-btn" title="Toggle theme" aria-label="Toggle theme"><svg viewBox="0 0 24 24"><path d="M21 13A9 9 0 1 1 11 3a7 7 0 0 0 10 10z"/></svg></button>
+    <button id="shareBtn" class="btn"><svg viewBox="0 0 24 24"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>Copy link</button>
+    <div class="token" title="No token: GitHub allows 60 API requests per hour per IP. File downloads do not count."><span class="ok"></span>Public access · 47 / 60</div>
+  </header>
+
+  <div id="banner" class="banner" hidden></div>
+
+  <main class="layout">
+    <aside class="sidebar left" aria-label="Repository files">
+      <div class="panel-head"><span>Files</span><label class="switch"><input type="checkbox" id="only3d" checked>3D only</label></div>
+      <div class="search"><input id="fileFilter" placeholder="Filter files…" aria-label="Filter files"></div>
+      <div class="chips" id="chips">
+        <button class="chip" data-type="step" aria-pressed="true">STEP</button>
+        <button class="chip" data-type="stl" aria-pressed="true">STL</button>
+        <button class="chip" data-type="obj" aria-pressed="true">OBJ</button>
+      </div>
+      <div id="fileTree" class="tree" role="tree"></div>
+      <div id="leftFoot" class="left-foot"></div>
+    </aside>
+
+    <section class="stage">
+      <div class="stage-head">
+        <div id="filePath" class="path"></div>
+        <div class="toolbar" role="toolbar" aria-label="View">
+          <button class="tb" data-view="fit" title="Fit (F)">Fit</button>
+          <button class="tb" data-view="iso">Iso</button>
+          <button class="tb" data-view="top">Top</button>
+          <button class="tb" data-view="front">Front</button>
+          <button class="tb" data-view="right">Right</button>
+          <span class="sep"></span>
+          <button class="tb" data-mode="edges" aria-pressed="true">Edges</button>
+          <button class="tb" data-mode="wire" aria-pressed="false">Wireframe</button>
+          <button class="tb" data-mode="grid" aria-pressed="true">Grid</button>
+        </div>
+      </div>
+      <div id="viewport" class="viewport">
+        <div id="empty" class="empty" hidden></div>
+        <div id="loading" class="loading" hidden><div class="loader"><span class="spin"></span><span id="loadingText"></span></div></div>
+        <div class="hint">Drag to orbit · Right-drag to pan · Scroll to zoom · Double-click a part to isolate</div>
+      </div>
+    </section>
+
+    <aside class="sidebar right" aria-label="Model">
+      <div class="model-wrap">
+        <div class="panel-head"><span>Model</span><span class="actions"><button class="link-btn" id="showAll">Show all</button><button class="link-btn" id="hideAll">Hide all</button></span></div>
+        <div id="modelTree" class="tree" role="tree"></div>
+      </div>
+      <div class="panel-head"><span>Properties</span></div>
+      <dl id="props" class="props"></dl>
+      <div id="notice"></div>
+      <div id="commit" class="commit"></div>
+    </aside>
+  </main>
+
+  <footer class="statusbar">
+    <span><span class="ok"></span>&nbsp; api.github.com · 47 / 60 requests left · resets 09:42</span>
+    <span>Tree cached by ETag · blobs cached by SHA</span>
+    <span id="stScene" class="r"></span>
+  </footer>
+</div>
+
+<div id="home" class="home" hidden>
+  <div class="home-top">
+    <div class="brand" style="border:0"><svg viewBox="0 0 24 24"><path d="M12 2l9 5v10l-9 5-9-5V7z"/><path d="M12 22V12M21 7l-9 5-9-5"/></svg>MeshBranch</div>
+    <button class="icon-btn" data-theme-toggle title="Toggle theme" aria-label="Toggle theme"><svg viewBox="0 0 24 24"><path d="M21 13A9 9 0 1 1 11 3a7 7 0 0 0 10 10z"/></svg></button>
+  </div>
+  <main class="home-main">
+    <h1>Browse the 3D models in any GitHub repository</h1>
+    <p class="lead">Open STEP, STL and OBJ files in your browser. Toggle parts, switch branches and see when another branch has a newer version.</p>
+    <form id="homeForm" class="home-form" autocomplete="off">
+      <input id="homeInput" placeholder="owner/repo or https://github.com/owner/repo" aria-label="Repository" spellcheck="false">
+      <button class="btn primary" type="submit">Open</button>
+    </form>
+    <div id="homeErr" class="home-err" role="alert"></div>
+    <div class="examples"><span>Try:</span><button class="ex" data-repo="PatrikGuerra/orange-pi-zero3-case">PatrikGuerra/orange-pi-zero3-case</button></div>
+    <div class="features">
+      <div class="feature"><svg viewBox="0 0 24 24"><path d="M12 2l9 5v10l-9 5-9-5V7z"/><path d="M3 7l9 5 9-5M12 12v10"/></svg><h3>Parts you can toggle</h3><p>See the assembly tree of a STEP file. Hide, show or isolate any part.</p></div>
+      <div class="feature"><svg viewBox="0 0 24 24"><circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="7" r="2"/><path d="M6 7v10M18 9c0 5-7 4-11 8"/></svg><h3>Branch aware</h3><p>Switch branches and get told when one has newer 3D files than yours.</p></div>
+      <div class="feature"><svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><h3>No sign-in, no upload</h3><p>Runs in your browser. Files come straight from GitHub and never leave your machine.</p></div>
+    </div>
+  </main>
+  <footer class="home-foot"><span>Free and open source · MIT</span><span>Public repositories · 60 GitHub API requests per hour</span></footer>
+</div>
+<div id="modal" class="modal" hidden></div>
+<div id="toast" class="toast" hidden></div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ---------- Mock repository data (ages are minutes since the last commit that touched the file) ----------
+const REPO = { owner: 'PatrikGuerra', name: 'orange-pi-zero3-case', defaultBranch: 'feature/initial-case' };
+const BASE = {
+  'cad/case-assembly.step': 120,
+  'export/stl/base.stl': 120, 'export/stl/lid.stl': 300, 'export/obj/fan-4010.obj': 2000,
+  'vendor/orange-pi-zero3.step': 3000, 'src/case.py': 120, 'src/params.py': 120, 'README.md': 900, 'LICENSE': 9000,
+};
+const BRANCHES = {
+  'feature/fan-inside': { msg: 'Set PCB wall gap to 0.3 mm', files: BASE },
+  'feature/antenna-holder': { msg: 'Add round antenna holder with zip-tie holes', files: { ...BASE,
+    'cad/case-assembly.step': 14, 'export/stl/lid.stl': 14, 'export/stl/antenna-holder.stl': 14, 'src/case.py': 14 } },
+  'review/print-ready': { msg: 'Thicken floor to 2.4 mm for PETG', files: { ...BASE,
+    'export/stl/base.stl': 35, 'src/params.py': 35 } },
+  'feature/initial-case': { msg: 'Initial case with fan outside', files: Object.fromEntries(
+    Object.keys(BASE).filter(p => p !== 'export/obj/fan-4010.obj').map(p => [p, 1500 + (BASE[p] > 1500 ? BASE[p] : 0)])) },
+};
+const SIZES = { step: [1.9, 'MB'], stl: [742, 'KB'], obj: [388, 'KB'] };
+const FORMAT = { step: 'STEP AP214', stl: 'STL (binary)', obj: 'Wavefront OBJ' };
+
+// ---------- Helpers ----------
+const $ = s => document.querySelector(s);
+const ext = p => p.split('.').pop().toLowerCase().replace('stp', 'step');
+const is3D = p => ['step', 'stl', 'obj'].includes(ext(p));
+const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const rel = m => m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`;
+const short = m => m < 60 ? `${m}m` : m < 1440 ? `${Math.round(m / 60)}h` : `${Math.round(m / 1440)}d`;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const sha = s => { let h = 2166136261; for (const c of s) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return (h >>> 0).toString(16).padStart(8, '0').slice(0, 7); };
+const branchAge = b => Math.min(...Object.values(BRANCHES[b].files));
+const ftBadge = p => { const e = is3D(p) ? ext(p) : 'other'; return `<span class="ft ft-${e}">${e === 'other' ? (p.split('.').pop().slice(0, 3).toUpperCase() || '—') : e === 'step' ? 'STP' : e.toUpperCase()}</span>`; };
+const I = {
+  chev: '<svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>',
+  folder: '<svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
+  eye: '<svg viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+  eyeOff: '<svg viewBox="0 0 24 24"><path d="M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4.1M6.6 6.6A17 17 0 0 0 2 12s3.5 7 10 7a9.700 9.700 0 0 0 5.4-1.6"/></svg>',
+  asm: '<svg viewBox="0 0 24 24"><path d="M12 2l9 5v10l-9 5-9-5V7z"/><path d="M3 7l9 5 9-5M12 12v10"/></svg>',
+  part: '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>',
+  check: '<svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg>',
+  warn: '<svg viewBox="0 0 24 24"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.5"/></svg>',
+  x: '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+};
+
+// Files changed on branch b that are newer than (or missing from) the current branch.
+function compare(b, cur = state.branch) {
+  const A = BRANCHES[cur].files, B = BRANCHES[b].files;
+  return Object.keys(B).filter(is3D).flatMap(p =>
+    A[p] === undefined ? [{ path: p, status: 'new', age: B[p] }] : B[p] < A[p] ? [{ path: p, status: 'modified', age: B[p], curAge: A[p] }] : []);
+}
+function newerIn(path) {
+  return Object.keys(BRANCHES).filter(b => b !== state.branch).flatMap(b => {
+    const a = BRANCHES[b].files[path], c = BRANCHES[state.branch].files[path];
+    return a !== undefined && c !== undefined && a < c ? [{ branch: b, age: a }] : [];
+  }).sort((x, y) => x.age - y.age);
+}
+
+// ---------- State ----------
+const state = {
+  branch: 'feature/fan-inside', file: 'cad/case-assembly.step',
+  expanded: new Set(['cad', 'export', 'export/stl', 'export/obj', 'vendor']),
+  only3d: true, filter: '', types: new Set(['step', 'stl', 'obj']),
+  root: null, selected: null, dismissed: new Set(), edges: true, wire: false, grid: true,
+};
+
+// ---------- Three.js scene ----------
+const vp = $('#viewport');
+let renderer;
+try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); }
+catch { vp.insertAdjacentHTML('beforeend', '<div class="error">WebGL is not available in this browser.</div>'); throw new Error('no webgl'); }
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+vp.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 5000);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+scene.add(new THREE.HemisphereLight(0xffffff, 0x8a90a0, 1.7));
+const key = new THREE.DirectionalLight(0xffffff, 1.6); key.position.set(80, 140, 100); scene.add(key);
+const fill = new THREE.DirectionalLight(0xffffff, 0.6); fill.position.set(-100, 60, -80); scene.add(fill);
+const edgeMat = new THREE.LineBasicMaterial({ color: 0x1d2330, transparent: true, opacity: 0.35 });
+let grid, modelGroup = null;
+function makeGrid() {
+  const dark = document.documentElement.dataset.theme === 'dark';
+  const y = grid ? grid.position.y : 0;
+  if (grid) scene.remove(grid);
+  grid = new THREE.GridHelper(400, 40, dark ? 0x3a4150 : 0xc5cad4, dark ? 0x222731 : 0xe2e6ec);
+  grid.position.y = y; grid.visible = state.grid; scene.add(grid);
+  edgeMat.color.set(dark ? 0x05070a : 0x1d2330); edgeMat.opacity = dark ? 0.6 : 0.35;
+}
+makeGrid();
+function resize() { const r = vp.getBoundingClientRect(); renderer.setSize(r.width, r.height, false); camera.aspect = r.width / r.height; camera.updateProjectionMatrix(); }
+new ResizeObserver(resize).observe(vp);
+(function loop() { requestAnimationFrame(loop); controls.update(); renderer.render(scene, camera); })();
+
+// ---------- Mock geometry (stands in for occt-import-js / STLLoader / OBJLoader output) ----------
+const C = { base: 0xd6dbe2, lid: 0xb3c2d6, board: 0x2f7d4f, shield: 0x1f3b63, metal: 0xb7bec8, fan: 0x2b2f36, tower: 0xc6ccd5, antenna: 0x15171a, clip: 0xe0a04a };
+function mesh(geo, color, o = {}) {
+  const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color, roughness: o.metal ? 0.35 : 0.62, metalness: o.metal ? 0.6 : 0.04, transparent: !!o.opacity, opacity: o.opacity ?? 1, depthWrite: !o.opacity }));
+  const e = new THREE.LineSegments(new THREE.EdgesGeometry(geo, 30), edgeMat); e.raycast = () => {}; m.add(e);
+  return m;
+}
+function leaf(name, obj) { const n = { name, obj }; obj.traverse(o => { if (o.isMesh) o.userData.node = n; }); return n; }
+function group(name, children) { const g = new THREE.Group(); children.forEach(c => g.add(c.obj)); const n = { name, obj: g, children, open: true }; children.forEach(c => c.parent = n); return n; }
+function B(name, [w, h, d], [x, y, z], color, o) { const m = mesh(new THREE.BoxGeometry(w, h, d), color, o); m.position.set(x, y, z); return leaf(name, m); }
+function Cy(name, r, h, [x, y, z], color, o = {}) { const m = mesh(new THREE.CylinderGeometry(r, r, h, 40), color, o); m.position.set(x, y, z); m.rotation.set(o.rx || 0, 0, o.rz || 0); return leaf(name, m); }
+const solid = (name, n) => leaf(name, n.obj); // STL: one body, no inner hierarchy
+const P = {
+  base: () => group('Base', [B('Floor', [66, 2, 66], [0, 1, 0], C.base), B('Wall front', [66, 34, 2], [0, 19, 32], C.base), B('Wall back', [66, 34, 2], [0, 19, -32], C.base), B('Wall left', [2, 34, 62], [-32, 19, 0], C.base), B('Wall right', [2, 34, 62], [32, 19, 0], C.base)]),
+  lid: opaque => B('Lid', [66, 2, 66], [0, 37, 0], C.lid, opaque ? {} : { opacity: 0.42 }),
+  towers: () => group('Towers', [[-26, -26], [26, -26], [-26, 26], [26, 26]].map(([x, z], i) => Cy(`Tower ${i + 1}`, 2.6, 27.4, [x, 22.3, z], C.tower))),
+  board: () => group('Orange Pi Zero 3', [B('PCB', [50, 1.6, 50], [0, 7.8, 0], C.board), B('SoC H618', [14, 1.2, 14], [-4, 9.2, -6], 0x23262d), B('RJ45', [16, 11, 16], [-12, 14.1, 22], C.metal, { metal: 1 }), B('USB-A', [14, 7, 14], [8, 12.1, 24], C.metal, { metal: 1 }), B('USB-C', [7, 3.2, 9], [25, 10.2, -10], C.metal, { metal: 1 }), B('micro-HDMI', [7, 3, 7.5], [25, 10.1, 4], C.metal, { metal: 1 })]),
+  shield: () => group('USB shield', [B('Shield PCB', [50, 1.6, 30], [0, 18, -8], C.shield), B('USB-A 1', [13, 6, 14], [-12, 21.8, -24], C.metal, { metal: 1 }), B('USB-A 2', [13, 6, 14], [4, 21.8, -24], C.metal, { metal: 1 }), Cy('Audio jack', 3, 12, [18, 22, -26], 0x1b1d22, { rx: Math.PI / 2 })]),
+  fan: () => group('Fan 4010', [B('Frame', [40, 10, 40], [0, 30.5, 4], C.fan), Cy('Hub', 9, 10.6, [0, 30.5, 4], 0x464c57)]),
+  holders: () => group('Antenna holder', [B('Holder left', [8, 7, 9], [-18, 40.5, -20], C.clip), B('Holder right', [8, 7, 9], [18, 40.5, -20], C.clip)]),
+  antenna: () => Cy('Antenna (reference)', 3, 60, [0, 41, -20], C.antenna, { rz: Math.PI / 2 }),
+};
+function buildModel(path, branch) {
+  const ant = branch === 'feature/antenna-holder';
+  const parts = {
+    'cad/case-assembly.step': () => [group('Case', [P.base(), P.lid(), P.towers()]), P.board(), P.shield(), P.fan(), ...(ant ? [P.holders(), P.antenna()] : [])],
+    'export/stl/base.stl': () => [solid('base (solid)', P.base())],
+    'export/stl/lid.stl': () => [solid('lid (solid)', group('', [P.lid(true), P.towers(), ...(ant ? [P.holders()] : [])]))],
+    'export/stl/antenna-holder.stl': () => [solid('antenna-holder (solid)', P.holders())],
+    'export/obj/fan-4010.obj': () => P.fan().children.map(c => (c.name = `g ${c.name.toLowerCase()}`, c)),
+    'vendor/orange-pi-zero3.step': () => [P.board()],
+  }[path]();
+  return group(path.split('/').pop(), parts);
+}
+const leaves = n => n.children ? n.children.flatMap(leaves) : [n];
+const visState = n => { const l = leaves(n), v = l.filter(x => x.obj.visible).length; return v === l.length ? 'on' : v ? 'mixed' : 'off'; };
+function setVisible(n, v) { leaves(n).forEach(l => l.obj.visible = v); }
+function countTris(obj, onlyVisible) {
+  let t = 0;
+  const add = o => { if (o.isMesh) t += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3; };
+  onlyVisible ? obj.traverseVisible(add) : obj.traverse(add);
+  return t;
+}
+
+// ---------- Camera ----------
+function fit(view = 'iso') {
+  if (!modelGroup) return;
+  const box = new THREE.Box3().setFromObject(modelGroup), c = box.getCenter(new THREE.Vector3()), r = box.getSize(new THREE.Vector3()).length() / 2;
+  const dirs = { iso: [1, 0.8, 1], top: [0, 1, 0.001], front: [0, 0.0001, 1], right: [1, 0.0001, 0] };
+  const dir = view === 'fit' ? camera.position.clone().sub(controls.target).normalize() : new THREE.Vector3(...dirs[view]).normalize();
+  const dist = r / Math.sin(THREE.MathUtils.degToRad(camera.fov / 2)) * 1.05;
+  camera.position.copy(c).addScaledVector(dir, dist); camera.near = dist / 100; camera.far = dist * 100; camera.updateProjectionMatrix();
+  controls.target.copy(c); controls.update(); grid.position.y = box.min.y - 0.01;
+}
+function applyModes() {
+  modelGroup?.traverse(o => { if (o.isMesh) o.material.wireframe = state.wire; if (o.isLineSegments) o.visible = state.edges && !state.wire; });
+  grid.visible = state.grid;
+  document.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-pressed', state[b.dataset.mode]));
+}
+function highlight() {
+  const sel = state.selected ? new Set(leaves(state.selected)) : new Set();
+  modelGroup?.traverse(o => { if (o.isMesh) o.material.emissive.set(sel.has(o.userData.node) ? 0x0f766e : 0x000000).multiplyScalar(sel.has(o.userData.node) ? 0.55 : 1); });
+}
+
+// ---------- Rendering: branch menu, banner, file tree ----------
+function renderBranch() {
+  $('#branchName').textContent = state.branch;
+  const anyNewer = Object.keys(BRANCHES).some(b => b !== state.branch && compare(b).length);
+  $('#branchDot').hidden = !anyNewer;
+  const items = Object.keys(BRANCHES).sort((a, b) => branchAge(a) - branchAge(b)).map(b => {
+    const n = b === state.branch ? 0 : compare(b).length, cur = b === state.branch;
+    return `<button class="menu-item ${cur ? 'cur' : ''}" role="menuitem" data-branch="${b}">
+      <span class="check">${cur ? I.check : ''}</span>
+      <span class="grow"><span class="mono">${b}</span>${b === REPO.defaultBranch ? '<span class="tag">default</span>' : ''}<br><span class="meta">${esc(BRANCHES[b].msg)} · ${rel(branchAge(b))}</span></span>
+      ${n ? `<span class="badge">${n} newer</span>` : ''}</button>`;
+  }).join('');
+  $('#branchMenu').innerHTML = `<div class="menu-head">Switch branch <span class="pill">${Object.keys(BRANCHES).length} branches</span></div>${items}
+    <div class="menu-foot">“Newer” = 3D files changed on that branch after it split from <span class="mono">${state.branch}</span> (GitHub compare API).</div>`;
+}
+function renderBanner() {
+  let best = null;
+  for (const b of Object.keys(BRANCHES)) {
+    if (b === state.branch) continue;
+    const list = compare(b);
+    if (list.length && (!best || list.length > best.list.length)) best = { b, list };
+  }
+  const id = best && `${state.branch}->${best.b}`;
+  $('#banner').hidden = !best || state.dismissed.has(id);
+  if (!best) return;
+  $('#banner').innerHTML = `${I.warn}<span class="grow"><span class="mono"><b>${best.b}</b></span> has <b>${best.list.length} newer 3D files</b> than <span class="mono">${state.branch}</span> · last push ${rel(branchAge(best.b))}</span>
+    <button class="btn" data-compare="${best.b}">Compare</button><button class="btn primary" data-switch="${best.b}">Switch to ${best.b}</button>
+    <button class="icon-btn" data-dismiss="${id}" aria-label="Dismiss">${I.x}</button>`;
+}
+function renderFileTree() {
+  const files = BRANCHES[state.branch].files, q = state.filter.toLowerCase();
+  const paths = Object.keys(files).filter(p => (!state.only3d || is3D(p)) && (!is3D(p) || state.types.has(ext(p))) && p.toLowerCase().includes(q));
+  const root = { children: new Map() };
+  for (const p of paths) { let n = root; p.split('/').forEach((s, i, a) => { const path = a.slice(0, i + 1).join('/'); if (!n.children.has(s)) n.children.set(s, { name: s, path, dir: i < a.length - 1, children: new Map() }); n = n.children.get(s); }); }
+  const rows = (n, d) => [...n.children.values()].sort((a, b) => b.dir - a.dir || a.name.localeCompare(b.name)).map(c => {
+    if (c.dir) { const open = q || state.expanded.has(c.path); return `<div class="row" data-dir="${c.path}" style="--d:${d}" role="treeitem" aria-expanded="${!!open}"><span class="tw ${open ? 'open' : ''}">${I.chev}</span><span class="ico">${I.folder}</span><span class="name">${esc(c.name)}</span></div>` + (open ? rows(c, d + 1) : ''); }
+    const nw = newerIn(c.path)[0], ok = is3D(c.path);
+    return `<div class="row ${ok ? '' : 'muted'} ${c.path === state.file ? 'sel' : ''}" data-file="${c.path}" style="--d:${d}" role="treeitem"><span class="tw none"></span>${ftBadge(c.path)}<span class="name">${esc(c.name)}</span>${nw ? `<span class="newer" title="Newer in ${nw.branch} (${rel(nw.age)})"></span>` : ''}<span class="age">${short(files[c.path])}</span></div>`;
+  }).join('');
+  $('#fileTree').innerHTML = rows(root, 0) || '<div class="row muted" style="--d:0">No matching files</div>';
+  const all = Object.keys(files), models = all.filter(is3D).length;
+  $('#leftFoot').textContent = `${all.length} files · ${models} models on this branch`;
+}
+
+// ---------- Rendering: model tree, properties ----------
+let ids = [];
+function renderModelTree() {
+  ids = [];
+  const rows = (nodes, d) => nodes.map(n => {
+    const id = ids.push(n) - 1, st = visState(n), g = !!n.children;
+    return `<div class="row ${state.selected === n ? 'sel' : ''} ${st === 'off' ? 'dim' : ''}" data-id="${id}" style="--d:${d}" role="treeitem">
+      <span class="tw ${g ? (n.open ? 'open' : '') : 'none'}" data-tw="${id}">${I.chev}</span>
+      <button class="eye ${st === 'mixed' ? 'mixed' : ''}" data-eye="${id}" aria-label="${st === 'off' ? 'Show' : 'Hide'} ${esc(n.name)}" title="${st === 'off' ? 'Show' : 'Hide'}">${st === 'off' ? I.eyeOff : I.eye}</button>
+      <span class="ico">${g ? I.asm : I.part}</span><span class="name">${esc(n.name)}</span>${g ? `<span class="cnt">${leaves(n).length}</span>` : ''}</div>` + (g && n.open ? rows(n.children, d + 1) : '');
+  }).join('');
+  $('#modelTree').innerHTML = rows(state.root.children, 0);
+  renderStatus();
+}
+function renderProps() {
+  const p = state.file, e = ext(p), box = new THREE.Box3().setFromObject(modelGroup).getSize(new THREE.Vector3());
+  const [sz, unit] = SIZES[e], age = BRANCHES[state.branch].files[p];
+  const prop = (k, v) => `<div class="prop"><dt>${k}</dt><dd>${v}</dd></div>`;
+  $('#props').innerHTML = prop('Format', FORMAT[e]) + prop('Size', `${(sz * (1 + (age % 7) / 10)).toFixed(e === 'step' ? 1 : 0)} ${unit}`)
+    + prop('Parts', leaves(state.root).length) + prop('Triangles', countTris(modelGroup).toLocaleString('en-US'))
+    + prop('Bounds', `<span class="mono">${box.x.toFixed(1)} × ${box.z.toFixed(1)} × ${box.y.toFixed(1)} mm</span>`);
+  const nw = newerIn(p)[0];
+  $('#notice').innerHTML = nw ? `<div class="notice"><span>${I.warn} A newer version of this file is on <span class="mono"><b>${nw.branch}</b></span> (${rel(nw.age)}).</span><button class="btn" data-open-in="${nw.branch}">Open it there</button></div>` : '';
+  const msg = age === branchAge(state.branch) ? BRANCHES[state.branch].msg : 'Update ' + p.split('/').pop();
+  $('#commit').hidden = false;
+  $('#commit').innerHTML = `<span class="avatar">PG</span><div><div class="msg">${esc(msg)}</div><div class="meta">Patrik Guerra · ${rel(age)} · <span class="mono">${sha(state.branch + p)}</span></div></div>`;
+}
+function renderStatus() {
+  const all = leaves(state.root), vis = all.filter(l => l.obj.visible).length;
+  $('#stScene').textContent = `${vis} / ${all.length} parts visible · ${countTris(modelGroup, true).toLocaleString('en-US')} triangles shown`;
+}
+function renderPath() {
+  const segs = state.file.split('/'), url = `https://github.com/${REPO.owner}/${REPO.name}/blob/${state.branch}/${state.file}`;
+  $('#filePath').innerHTML = ftBadge(state.file) + segs.slice(0, -1).map(s => `<span class="seg">${esc(s)}</span><span class="seg">/</span>`).join('')
+    + `<strong>${esc(segs.at(-1))}</strong><a class="btn ghost" href="${url}" target="_blank" rel="noopener" style="height:24px;font-size:12px">View on GitHub</a>`;
+}
+
+// ---------- Actions ----------
+let loadToken = 0;
+async function openFile(path) {
+  const token = ++loadToken;
+  state.file = path; state.selected = null; $('#empty').hidden = true;
+  renderFileTree(); renderPath(); updateHash();
+  const e = ext(path), steps = [`Fetching ${path.split('/').pop()} from GitHub…`, e === 'step' ? 'Tessellating STEP with OpenCascade (WASM worker)…' : `Parsing ${e.toUpperCase()}…`, 'Building scene…'];
+  $('#loading').hidden = false;
+  for (const s of steps) { $('#loadingText').textContent = s; await sleep(240); if (token !== loadToken) return; }
+  if (modelGroup) { scene.remove(modelGroup); modelGroup.traverse(o => { o.geometry?.dispose(); o.isMesh && o.material.dispose(); }); }
+  state.root = buildModel(path, state.branch); modelGroup = state.root.obj; scene.add(modelGroup);
+  applyModes(); fit('iso'); renderModelTree(); renderProps();
+  $('#loading').hidden = true;
+}
+function clearModel() {
+  if (modelGroup) { scene.remove(modelGroup); modelGroup.traverse(o => { o.geometry?.dispose(); o.isMesh && o.material.dispose(); }); }
+  modelGroup = null; state.root = null;
+}
+// R14: nothing opens by itself; the stage lists the branch's models instead.
+function showEmpty() {
+  ++loadToken; clearModel(); grid.visible = false;
+  state.file = null; state.selected = null;
+  renderFileTree(); updateHash();
+  const models = Object.keys(BRANCHES[state.branch].files).filter(is3D).sort();
+  $('#filePath').innerHTML = `<span class="seg">${REPO.owner}</span><span class="seg">/</span><strong>${REPO.name}</strong><span class="seg">· No file selected</span>`;
+  $('#empty').innerHTML = `<div class="empty-card"><header><h2>Select a 3D file</h2><p>${models.length} models on <span class="mono">${esc(state.branch)}</span>. Pick one here or in the file tree.</p></header>
+    <div class="empty-list">${models.map(p => { const nw = newerIn(p)[0]; return `<div class="row" data-open="${p}">${ftBadge(p)}<span class="name mono">${esc(p)}</span>${nw ? `<span class="newer" title="Newer in ${nw.branch}"></span>` : ''}<span class="age">${short(BRANCHES[state.branch].files[p])}</span></div>`; }).join('')}</div></div>`;
+  $('#empty').hidden = false; $('#loading').hidden = true;
+  $('#modelTree').innerHTML = '<div class="tree-empty">Open a file to see its parts.</div>';
+  $('#props').innerHTML = ''; $('#notice').innerHTML = ''; $('#commit').hidden = true; $('#stScene').textContent = '';
+}
+function switchBranch(b, path) {
+  state.branch = b; closeMenu();
+  const files = BRANCHES[b].files;
+  renderBranch(); renderBanner();
+  const next = path && files[path] !== undefined ? path : state.file && files[state.file] !== undefined ? state.file : null;
+  next ? openFile(next) : showEmpty();
+  toast(`Switched to ${b}`);
+}
+function select(n) { state.selected = n; highlight(); renderModelTree(); }
+function isolate(n) { setVisible(state.root, false); setVisible(n, true); select(n); toast(`Isolated “${n.name}” · Show all to restore`); }
+function updateHash() { history.replaceState(null, '', `#/${REPO.owner}/${REPO.name}?ref=${encodeURIComponent(state.branch)}${state.file ? `&path=${encodeURIComponent(state.file)}` : ''}`); }
+let toastTimer;
+function toast(t) { const el = $('#toast'); el.textContent = t; el.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => el.hidden = true, 2200); }
+function openMenu() { renderBranch(); $('#branchMenu').hidden = false; $('#branchBtn').setAttribute('aria-expanded', 'true'); }
+function closeMenu() { $('#branchMenu').hidden = true; $('#branchBtn').setAttribute('aria-expanded', 'false'); }
+function openCompare(b) {
+  const list = compare(b), cur = BRANCHES[state.branch].files;
+  $('#modal').innerHTML = `<div class="dialog" role="dialog" aria-modal="true" aria-label="Compare branches">
+    <header><h3><span class="mono">${state.branch}</span> ← <span class="mono">${b}</span></h3><p>3D files that changed on <span class="mono">${b}</span> since the two branches split.</p></header>
+    <table><thead><tr><th>File</th><th>Status</th><th>Here</th><th>There</th><th></th></tr></thead><tbody>
+    ${list.map(f => `<tr><td><span class="mono">${esc(f.path)}</span></td><td class="${f.status === 'new' ? 'st-new' : 'st-mod'}">${f.status}</td><td class="age">${cur[f.path] !== undefined ? rel(cur[f.path]) : '—'}</td><td>${rel(f.age)}</td><td><button class="btn" data-open-in="${b}" data-path="${f.path}" style="height:26px;font-size:12px">Open</button></td></tr>`).join('')}
+    </tbody></table>
+    <footer><button class="btn" data-close>Close</button><button class="btn primary" data-switch="${b}">Switch to ${b}</button></footer></div>`;
+  $('#modal').hidden = false;
+}
+
+// ---------- Events ----------
+$('#branchBtn').onclick = e => { e.stopPropagation(); $('#branchMenu').hidden ? openMenu() : closeMenu(); };
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-branch],[data-switch],[data-compare],[data-dismiss],[data-open-in],[data-close]');
+  if (!e.target.closest('#branchMenu')) closeMenu();
+  if (e.target === $('#modal')) $('#modal').hidden = true;
+  if (!t) return;
+  const d = t.dataset;
+  if (d.branch && d.branch !== state.branch) switchBranch(d.branch);
+  if (d.switch) { $('#modal').hidden = true; switchBranch(d.switch); }
+  if (d.compare) openCompare(d.compare);
+  if (d.dismiss) { state.dismissed.add(d.dismiss); renderBanner(); }
+  if (d.openIn) { $('#modal').hidden = true; switchBranch(d.openIn, d.path || state.file); }
+  if ('close' in d) $('#modal').hidden = true;
+});
+$('#fileTree').onclick = e => {
+  const r = e.target.closest('.row'); if (!r) return;
+  if (r.dataset.dir) { const p = r.dataset.dir; state.expanded.has(p) ? state.expanded.delete(p) : state.expanded.add(p); renderFileTree(); }
+  else if (r.dataset.file) is3D(r.dataset.file) ? (r.dataset.file !== state.file && openFile(r.dataset.file)) : toast(`No 3D preview for .${r.dataset.file.split('.').pop()} files`);
+};
+$('#fileFilter').oninput = e => { state.filter = e.target.value; renderFileTree(); };
+$('#only3d').onchange = e => { state.only3d = e.target.checked; renderFileTree(); };
+$('#chips').onclick = e => { const c = e.target.closest('.chip'); if (!c) return; const t = c.dataset.type; state.types.has(t) ? state.types.delete(t) : state.types.add(t); c.setAttribute('aria-pressed', state.types.has(t)); renderFileTree(); };
+$('#modelTree').onclick = e => {
+  const eye = e.target.closest('[data-eye]'), tw = e.target.closest('[data-tw]'), row = e.target.closest('.row');
+  if (eye) { const n = ids[eye.dataset.eye]; setVisible(n, visState(n) === 'off'); renderModelTree(); }
+  else if (tw) { const n = ids[tw.dataset.tw]; n.open = !n.open; renderModelTree(); }
+  else if (row) select(ids[row.dataset.id]);
+};
+$('#modelTree').ondblclick = e => { const row = e.target.closest('.row'); if (row && !e.target.closest('[data-eye],[data-tw]')) isolate(ids[row.dataset.id]); };
+$('#showAll').onclick = () => { if (state.root) { setVisible(state.root, true); renderModelTree(); } };
+$('#hideAll').onclick = () => { if (state.root) { setVisible(state.root, false); renderModelTree(); } };
+$('#empty').onclick = e => { const r = e.target.closest('[data-open]'); if (r) openFile(r.dataset.open); };
+document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => fit(b.dataset.view));
+document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => { state[b.dataset.mode] = !state[b.dataset.mode]; applyModes(); });
+$('#themeBtn').onclick = toggleTheme;
+document.querySelector('[data-theme-toggle]').onclick = toggleTheme;
+function toggleTheme() { const t = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; document.documentElement.dataset.theme = t; localStorage.setItem('meshbranch-theme', t); makeGrid(); }
+// Accepts owner/repo, github.com/owner/repo and full GitHub URLs (tree/blob paths are ignored).
+function parseRepo(input) {
+  const m = input.trim().match(/^(?:https?:\/\/)?(?:www\.)?(?:github\.com\/)?([A-Za-z0-9](?:[A-Za-z0-9-]{0,38}))\/([A-Za-z0-9._-]+?)(?:\.git)?(?:[\/?#].*)?$/);
+  return m ? { owner: m[1], name: m[2] } : null;
+}
+function showHome() { $('#home').hidden = false; history.replaceState(null, '', '#/'); $('#homeInput').focus(); }
+function openRepo(input) {
+  const r = parseRepo(input);
+  if (!r) { $('#homeErr').textContent = 'Enter a repository as owner/repo or paste its GitHub URL.'; return; }
+  $('#homeErr').textContent = ''; $('#home').hidden = true;
+  if (`${r.owner}/${r.name}`.toLowerCase() !== `${REPO.owner}/${REPO.name}`.toLowerCase()) toast(`Mock: showing the demo repository instead of ${r.owner}/${r.name}`);
+  showEmpty();
+}
+$('#homeForm').onsubmit = e => { e.preventDefault(); openRepo($('#homeInput').value); };
+document.querySelectorAll('[data-repo]').forEach(b => b.onclick = () => openRepo(b.dataset.repo));
+$('#brandLink').onclick = showHome;
+$('#shareBtn').onclick = () => navigator.clipboard.writeText(location.href).then(() => toast('Link copied · opens this file on this branch'), () => toast(location.href));
+document.addEventListener('keydown', e => {
+  if (e.target.matches('input')) return;
+  if (e.key === 'Escape') { closeMenu(); $('#modal').hidden = true; }
+  if (e.key.toLowerCase() === 'f') fit('fit');
+});
+// Click (not drag) selects; double-click isolates.
+const ray = new THREE.Raycaster(), down = new THREE.Vector2();
+function pick(e) {
+  const r = renderer.domElement.getBoundingClientRect();
+  ray.setFromCamera(new THREE.Vector2((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1), camera);
+  return ray.intersectObject(modelGroup, true).find(h => h.object.isMesh && h.object.visible && h.object.userData.node)?.object.userData.node;
+}
+renderer.domElement.addEventListener('pointerdown', e => down.set(e.clientX, e.clientY));
+renderer.domElement.addEventListener('pointerup', e => { if (modelGroup && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 4) select(pick(e) || null); });
+renderer.domElement.addEventListener('dblclick', e => { const n = modelGroup && pick(e); if (n) isolate(n); });
+
+// ---------- Boot (deep link: #/owner/repo?ref=<branch>&path=<file>) ----------
+const q = new URLSearchParams(location.hash.split('?')[1] || '');
+if (BRANCHES[q.get('ref')]) state.branch = q.get('ref');
+const startFile = q.get('path');
+renderBranch(); renderBanner(); resize();
+if (!/^#\/[^/?]+\/[^/?]+/.test(location.hash)) showHome();
+else if (startFile && is3D(startFile) && BRANCHES[state.branch].files[startFile] !== undefined) openFile(startFile);
+else showEmpty();
+</script>
+</body>
+</html>
