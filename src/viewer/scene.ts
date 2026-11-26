@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { ViewportGizmo, type GizmoOptions } from 'three-viewport-gizmo';
 
 export type View = 'fit' | 'iso' | 'top' | 'front' | 'right';
 export type ViewMode = 'solid' | 'edges' | 'wire';
@@ -14,6 +15,20 @@ const DIRS: Record<Exclude<View, 'fit'>, [number, number, number]> = {
   iso: [1, -1, 0.8], top: [0, -0.001, 1], front: [0, -1, 0], right: [1, 0, 0],
 };
 const mats = (m: THREE.Mesh) => [m.material].flat() as Mat[];
+
+// View cube. The library names faces for a Y-up world; this scene is Z-up, so the labels follow the real axes.
+function cubeOptions(el: HTMLElement, dark: boolean): GizmoOptions {
+  const face = dark ? '#1c212b' : '#ffffff', label = dark ? '#c9ced6' : '#374151', accent = dark ? '#2dd4bf' : '#0f766e';
+  const f = (text: string) => ({ label: text, color: face, labelColor: label, hover: { color: accent, labelColor: dark ? '#062824' : '#ffffff' } });
+  return {
+    type: 'cube', id: 'viewcube', container: el, placement: 'top-right', size: 96, offset: { top: 12, right: 12 },
+    font: { family: 'Inter, "Segoe UI", system-ui, sans-serif', weight: 700 },
+    background: { color: dark ? '#2e3442' : '#aab2bd', hover: { color: accent } },
+    edges: { color: dark ? '#2e3442' : '#aab2bd', hover: { color: accent } },
+    corners: { color: dark ? '#2e3442' : '#aab2bd', hover: { color: accent } },
+    x: f('RIGHT'), nx: f('LEFT'), y: f('BACK'), ny: f('FRONT'), z: f('TOP'), nz: f('BOTTOM'),
+  };
+}
 
 export class SceneView {
   readonly renderer: THREE.WebGLRenderer;
@@ -30,6 +45,7 @@ export class SceneView {
   private dirty = true;
   private raf = 0;
   private resizeObserver: ResizeObserver;
+  private gizmo: ViewportGizmo;
   edges = true; wire = false; gridOn = true; dark = false;
   // Called on a click (not a drag) in the viewport with the visible mesh under the pointer.
   onPick: ((mesh: THREE.Mesh | null, double: boolean) => void) | null = null;
@@ -48,6 +64,9 @@ export class SceneView {
     const fill = new THREE.DirectionalLight(0xffffff, 0.6);
     fill.position.set(-1.2, 1, 0.6);
     this.scene.add(hemi, key, fill);
+    this.gizmo = new ViewportGizmo(this.camera, this.renderer, cubeOptions(el, false));
+    this.gizmo.attachControls(this.controls);
+    this.gizmo.addEventListener('change', () => { this.dirty = true; });
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(el);
     this.resize();
@@ -63,7 +82,11 @@ export class SceneView {
     const loop = () => {
       this.raf = requestAnimationFrame(loop);
       // Render only when something changed, so an idle viewer costs nothing.
-      if (this.controls.update() || this.dirty) { this.renderer.render(this.scene, this.camera); this.dirty = false; }
+      if (this.controls.update() || this.dirty) {
+        this.renderer.render(this.scene, this.camera);
+        this.gizmo.cameraUpdate().render(); // keep the cube turned like the camera, even after fit()
+        this.dirty = false;
+      }
     };
     loop();
   }
@@ -74,11 +97,13 @@ export class SceneView {
     this.renderer.setSize(r.width, r.height, false);
     this.camera.aspect = r.width / r.height;
     this.camera.updateProjectionMatrix();
+    this.gizmo?.update();
     this.dirty = true;
   }
 
   setTheme(dark: boolean) {
     this.dark = dark;
+    this.gizmo.set(cubeOptions(this.el, dark));
     this.edgeMat.color.set(dark ? 0x05070a : 0x1d2330);
     this.edgeMat.opacity = dark ? 0.6 : 0.35;
     this.makeGrid();
@@ -208,6 +233,7 @@ export class SceneView {
     this.camera.near = dist / 1000; this.camera.far = dist * 100;
     this.camera.updateProjectionMatrix();
     this.controls.target.copy(c);
+    this.gizmo.target.copy(c);
     this.controls.update();
     this.dirty = true;
   }
@@ -225,6 +251,8 @@ export class SceneView {
   dispose() {
     cancelAnimationFrame(this.raf);
     this.resizeObserver.disconnect();
+    this.gizmo.detachControls();
+    this.gizmo.dispose();
     this.controls.dispose();
     if (this.model) disposeTree(this.model);
     this.edgeMat.dispose();

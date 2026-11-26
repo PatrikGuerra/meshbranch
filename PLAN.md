@@ -203,6 +203,7 @@ O STEP é o formato com a árvore de peças mais rica na V1. STL tem 1 corpo, e 
 Funções do visualizador:
 
 - Câmera orbital, com vistas Ajustar, Iso, Topo, Frente e Direita. Tecla `F` ajusta.
+- View cube no canto superior direito ([three-viewport-gizmo](https://github.com/Fennec-hub/three-viewport-gizmo), MIT): gira junto com a câmera, e um clique numa face, aresta ou canto leva a uma das 26 vistas.
 - Arestas (`EdgesGeometry`), wireframe e grade no chão do modelo.
 - Seleção com destaque. Duplo clique isola a peça.
 - Por peça: cor, transparência e modo de vista (sólido, sólido com arestas, wireframe). Ficam no painel de propriedades da peça selecionada (R16).
