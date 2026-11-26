@@ -47,6 +47,7 @@ Proposta de valor: **"o navegador de modelos 3D do seu repositório"**. É só c
 | R13 | Tema claro e escuro. Interface só em en-US na V1. Os textos ficam num arquivo `en-US.json`, para traduzir depois. |
 | R14 | Ao abrir um repositório, nenhum arquivo abre sozinho. O centro mostra "Select a 3D file" e a lista dos modelos do repositório. |
 | R15 | Na V1, o seletor mostra só branches. Tags ficam para depois. |
+| R16 | Cada peça (ou grupo) pode trocar de cor, de transparência (0 a 100%) e de modo de vista: sólido, sólido com arestas ou wireframe. Num grupo, a mudança vale para todos os filhos. "Reset" volta ao que veio no arquivo. As mudanças não alteram o arquivo e somem ao trocar de arquivo. |
 
 ### Fora do escopo
 
@@ -204,6 +205,7 @@ Funções do visualizador:
 - Câmera orbital, com vistas Ajustar, Iso, Topo, Frente e Direita. Tecla `F` ajusta.
 - Arestas (`EdgesGeometry`), wireframe e grade no chão do modelo.
 - Seleção com destaque. Duplo clique isola a peça.
+- Por peça: cor, transparência e modo de vista (sólido, sólido com arestas, wireframe). Ficam no painel de propriedades da peça selecionada (R16).
 - Unidade em mm. STEP e 3MF trazem a unidade. STL, OBJ e PLY não trazem, então o app assume mm e deixa trocar. glTF usa metros, então o app converte.
 - Futuro: medir distâncias, plano de corte, vista explodida e **comparação visual entre branches** (as duas versões sobrepostas, com cores diferentes).
 
@@ -319,7 +321,7 @@ meshbranch/
 |---|---|---|
 | F0 | Plano e mock | Este documento e `mock/index.html` (feito). |
 | F1 | MVP público (feito) | Colar URL de repo público, ver a árvore e abrir STEP, STL e OBJ. Publicado no Pages. |
-| F2 | Peças e link | Árvore de peças com olho, isolar, seleção nos dois sentidos, propriedades, link direto. |
+| F2 | Peças | Árvore de peças com olho, isolar, seleção nos dois sentidos, propriedades. Cor, transparência e modo de vista por peça (R16). O link direto já saiu na F1. |
 | F3 | Branches | Seletor, troca mantendo o arquivo, cálculo de "mais novo", banner e "Compare". |
 | F4 | LFS e cache | Arquivos LFS, cache por SHA, contador e banner de limite. |
 | F5 | Acabamento de produto | Tema, acessibilidade, estados vazios e de erro, página inicial com exemplos. Fecha a **V1**. |
