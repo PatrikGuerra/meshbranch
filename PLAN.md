@@ -326,7 +326,8 @@ meshbranch/
 | F1 | MVP público (feito) | Colar URL de repo público, ver a árvore e abrir STEP, STL e OBJ. Publicado no Pages. |
 | F2 | Peças (feito) | Árvore de peças com olho, isolar, seleção nos dois sentidos, propriedades. Cor, transparência e modo de vista por peça (R16). O link direto já saiu na F1. |
 | F3 | Branches (feito) | Seletor, troca mantendo o arquivo, cálculo de "mais novo", banner e "Compare". |
-| F4 | LFS e cache | Arquivos LFS, cache por SHA, contador e banner de limite. |
+| F4 | Cache e limite | Arquivos 3D guardados no navegador pelo SHA do blob (IndexedDB), sem baixar de novo, nem em outra branch. Aviso no topo quando o limite de pedidos acaba, com a hora da liberação. O contador já saiu na F1. |
+| F4.1 | Git LFS | Abrir arquivos guardados no Git LFS, baixando de `media.githubusercontent.com`. Se o endereço não aceitar CORS, fica o aviso com link para baixar. |
 | F5 | Acabamento de produto | Tema, acessibilidade, estados vazios e de erro, página inicial com exemplos. Fecha a **V1**. |
 | V1.1 | Mais formatos | Abrir 3MF, glTF/GLB e PLY, com árvore de peças, filtros e testes com arquivos de exemplo. |
 | F6 | Extras | Traduções (pt-BR primeiro), tags no seletor, token e repos privados, `.meshbranch/index.json` gerado por Action, medir, corte, vista explodida, comparação visual entre branches, botão "Open in MeshBranch" para READMEs. |
@@ -335,7 +336,7 @@ meshbranch/
 
 | Item | Situação |
 |---|---|
-| CORS do `media.githubusercontent.com` (LFS) | Testar na F4. Se falhar, mostrar link para baixar. |
+| CORS do `media.githubusercontent.com` (LFS) | Testar na F4.1. Se falhar, mostrar link para baixar. |
 | STEP ou arquivo muito grande pesa na memória | Worker com cancelamento e aviso acima de 50 MB, configurável. |
 | 60 requisições por hora, por IP (V1 sem token) | Orçamento e regras da seção 6.2. Redes compartilhadas podem esgotar o limite. |
 | `304` conta no limite sem token | Confirmado na F1. O cache local responde antes (seção 6.2, regra 4). |
