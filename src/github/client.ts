@@ -29,7 +29,16 @@ const time = (d: Date) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2
 
 // Without a token, even a 304 uses one request (checked 2026-11-26), so the cache answers first:
 // immutable URLs (pinned to a commit SHA) never refetch; others refetch after maxAgeMs.
-async function api(path: string, opts: { accept?: string; immutable?: boolean; maxAgeMs?: number; noCache?: boolean } = {}): Promise<string> {
+// Two callers asking for the same URL at the same time share one request.
+const inflight = new Map<string, Promise<string>>();
+function api(path: string, opts: { accept?: string; immutable?: boolean; maxAgeMs?: number; noCache?: boolean } = {}): Promise<string> {
+  const key = `${opts.accept ?? ''} ${path}`;
+  let p = inflight.get(key);
+  if (!p) { p = request(path, opts).finally(() => inflight.delete(key)); inflight.set(key, p); }
+  return p;
+}
+
+async function request(path: string, opts: { accept?: string; immutable?: boolean; maxAgeMs?: number; noCache?: boolean }): Promise<string> {
   const url = API + path;
   const cached = opts.noCache ? null : readCache(url);
   if (cached && (opts.immutable || (opts.maxAgeMs && Date.now() - (cached.at ?? 0) < opts.maxAgeMs))) return cached.body;

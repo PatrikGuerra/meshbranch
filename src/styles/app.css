@@ -156,6 +156,8 @@ a{color:var(--accent-text);text-decoration:none}a:hover{text-decoration:underlin
 .tag{font-size:10.5px;padding:0 6px;border:1px solid var(--border-strong);border-radius:4px;color:var(--muted);margin-left:6px}
 .pill{font-size:11px;border:1px solid var(--border-strong);border-radius:999px;padding:0 7px;color:var(--muted);font-weight:500}
 .banner .btn.small{height:26px}
+.banner-out{background:color-mix(in srgb,var(--danger) 12%,var(--panel));border-bottom-color:color-mix(in srgb,var(--danger) 35%,var(--panel))}
+.banner-out>svg{color:var(--danger)}
 .file-notice{display:flex;align-items:center;gap:10px;padding:6px 12px;background:var(--warn-weak);border-bottom:1px solid var(--warn-border);font-size:12.5px}
 .file-notice>svg{color:var(--warn)}
 .file-notice .grow{flex:1}

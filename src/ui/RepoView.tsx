@@ -3,6 +3,8 @@ import type * as THREE from 'three';
 import { buildHash, splitRefPath, type Route } from '../app/route';
 import { cachedComparison, compareCommits, currentRate, download, getDefaultBranch, getTree, GitHubError, listBranches, onRateLimit, rawUrl, resolveCommit, type RateLimit, type Tree } from '../github/client';
 import { bestBranch, MIN_REMAINING, newer3d, newerIndex, pickCandidates } from '../branches/newer';
+import { getBlob, putBlob } from '../github/blobCache';
+import { rateNotice } from '../github/limit';
 import { BranchMenu, type CheckState } from './BranchMenu';
 import { CompareDialog } from './CompareDialog';
 import { FORMAT_LABEL, formatOf, isLfsPointer } from '../importers/formats';
@@ -167,11 +169,17 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
     const name = path.slice(dir.length);
     (async () => {
       let shown = -1;
-      setFile({ status: 'loading', step: `Downloading ${name}`, progress: 0 });
-      const buf = await download(rawUrl(owner, repo, state.sha, path), entry.size ?? 0, p => {
-        const pct = Math.floor(p * 100);
-        if (pct !== shown) { shown = pct; setFile({ status: 'loading', step: `Downloading ${name}`, progress: p }); }
-      }, ac.signal);
+      // Content with the same blob SHA was opened before (any branch): read it from this browser, no download.
+      let buf = await getBlob(entry.sha);
+      if (ac.signal.aborted) return;
+      if (!buf) {
+        setFile({ status: 'loading', step: `Downloading ${name}`, progress: 0 });
+        buf = await download(rawUrl(owner, repo, state.sha, path), entry.size ?? 0, p => {
+          const pct = Math.floor(p * 100);
+          if (pct !== shown) { shown = pct; setFile({ status: 'loading', step: `Downloading ${name}`, progress: p }); }
+        }, ac.signal);
+        if (!isLfsPointer(buf)) await putBlob(entry.sha, buf);
+      }
       if (isLfsPointer(buf)) { view.setModel(null); setFile({ status: 'lfs' }); return; }
       setFile({ status: 'loading', step: format === 'step' ? 'Reading STEP with OpenCascade…' : `Reading ${FORMAT_LABEL[format]}…` });
       const obj = await loadModel(format, buf, {
@@ -179,9 +187,15 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
         resourceUrl: rawUrl(owner, repo, state.sha, dir),
         fetchText: async rel => {
           const p = joinPath(dir, rel);
-          if (!state.tree.entries.some(e => e.path === p)) return null;
+          const sib = state.tree.entries.find(e => e.path === p && e.type === 'blob');
+          if (!sib) return null;
+          const hit = await getBlob(sib.sha);
+          if (hit) return new TextDecoder().decode(hit);
           const r = await fetch(rawUrl(owner, repo, state.sha, p), { signal: ac.signal });
-          return r.ok ? r.text() : null;
+          if (!r.ok) return null;
+          const b = await r.arrayBuffer();
+          await putBlob(sib.sha, b);
+          return new TextDecoder().decode(b);
         },
       });
       // shortcut: a STEP read still running in the worker is not stopped, only ignored; add worker cancel if big files make this hurt.
@@ -259,6 +273,7 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
       </header>
 
       {ready?.tree.truncated && <div className="banner"><Icon name="warn" /><span className="grow">This repository is very large. GitHub returned only part of its file list, so some files are missing.</span></div>}
+      {(() => { const n = rateNotice(rate); return n && <div className={`banner ${n.level === 'out' ? 'banner-out' : ''}`} role="status"><Icon name="warn" /><span className="grow">{n.text}</span></div>; })()}
       {ready && best && !dismissed.has(`${ready.sha}:${best.branch}`) && (
         <div className="banner">
           <Icon name="warn" />
