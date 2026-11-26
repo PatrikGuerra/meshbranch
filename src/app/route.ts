@@ -10,19 +10,24 @@ const valid = (owner: string, repo: string) => OWNER.test(owner) && REPO.test(re
 const clean = (rest: string | undefined) => rest?.split('/').filter(Boolean).join('/') || undefined;
 const decode = (s: string) => { try { return decodeURIComponent(s); } catch { return s; } };
 
-// Accepts owner/repo, GitHub URLs (…/tree/<branch>/<dir>, …/blob/<branch>/<file>) and MeshBranch links.
+// Accepts owner/repo, GitHub URLs (…/tree|blob|raw/<branch>/<path>), raw.githubusercontent.com URLs and MeshBranch links.
 export function parseRepoInput(input: string): RepoTarget | null {
   const s = input.trim();
   const hash = s.indexOf('#/');
   if (hash >= 0) { const r = parseHash(s.slice(hash)); return r.kind === 'repo' ? { owner: r.owner, repo: r.repo, rest: r.rest } : null; }
-  const m = s.match(/^(?:https?:\/\/)?(?:www\.)?(?:github\.com\/)?([^/\s]+)\/([^/\s?#]+?)(?:\.git)?(?:\/(?:tree|blob)\/([^?#\s]+)|\/[^\s]*)?(?:[?#].*)?$/i);
+  const refPath = (p: string | undefined) => clean(p?.split('/').map(decode).join('/').replace(/^refs\/heads\//, ''));
+  const raw = s.match(/^(?:https?:\/\/)?raw\.githubusercontent\.com\/([^/\s]+)\/([^/\s]+)\/([^?#\s]+)/i);
+  if (raw) return valid(raw[1], raw[2]) ? { owner: raw[1], repo: raw[2], rest: refPath(raw[3]) } : null;
+  const m = s.match(/^(?:https?:\/\/)?(?:www\.)?(?:github\.com\/)?([^/\s]+)\/([^/\s?#]+?)(?:\.git)?(?:\/(?:tree|blob|raw)\/([^?#\s]+)|\/[^\s]*)?(?:[?#].*)?$/i);
   if (!m || !valid(m[1], m[2])) return null;
-  return { owner: m[1], repo: m[2], rest: clean(m[3] && m[3].split('/').map(decode).join('/')) };
+  return { owner: m[1], repo: m[2], rest: refPath(m[3]) };
 }
 
 // Hash routes mirror GitHub URLs: #/owner/repo, #/owner/repo/tree/<ref>/<dir>, #/owner/repo/blob/<ref>/<file>.
-// The older #/owner/repo?ref=<ref>&path=<file> form is still read.
+// Also read: #ref=<any GitHub link> (like 3dviewer.net's #model=) and the older #/owner/repo?ref=<ref>&path=<file>.
 export function parseHash(hash: string): Route {
+  const link = hash.match(/^#(?:ref|model|url)=(.+)$/i);
+  if (link) { const r = parseRepoInput(decode(link[1])); return r ? { kind: 'repo', ...r } : { kind: 'home' }; }
   const m = hash.match(/^#\/([^/?]+)\/([^/?]+)(?:\/(?:tree|blob)\/([^?]*))?\/?(?:\?(.*))?$/);
   if (!m || !valid(m[1], m[2])) return { kind: 'home' };
   let rest = m[3] ? m[3].split('/').map(decode).join('/') : undefined;

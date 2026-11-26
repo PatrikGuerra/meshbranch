@@ -228,6 +228,7 @@ Caminho reverso: ao abrir um link, o app separa a branch do caminho do arquivo.
 Depois disso, a árvore abre até o arquivo ou a pasta. Uma pasta mostra a lista dos modelos dentro dela. Navegar dentro da mesma branch não gasta pedidos.
 
 - Colar na página inicial um link do GitHub (repo, branch, pasta ou arquivo) abre o mesmo lugar no MeshBranch.
+- `#ref=<link do GitHub>` também abre o lugar do link, como o `#model=` do 3dviewer.net. Aceita links `github.com/.../tree/`, `/blob/`, `/raw/` e `raw.githubusercontent.com`. `#model=` e `#url=` também funcionam. Depois de lido, o endereço vira o formato normal.
 - O formato antigo `#/owner/repo?ref=<branch>&path=<arquivo>` ainda funciona e é trocado pelo novo.
 - Tags ficam para depois.
 - Botão "Copy link" copia o endereço atual.

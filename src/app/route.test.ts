@@ -19,6 +19,25 @@ describe('parseRepoInput', () => {
   it.each(['', 'just-a-name', 'https://gitlab.com/o/r/x', '-bad/r', 'o/..', 'o r/x'])('rejects %s', input => {
     expect(parseRepoInput(input)).toBeNull();
   });
+
+  it.each([
+    ['https://raw.githubusercontent.com/o/r/feature/x/cad/a.step', 'feature/x/cad/a.step'],
+    ['https://raw.githubusercontent.com/o/r/refs/heads/main/a.stl', 'main/a.stl'],
+    ['https://github.com/o/r/raw/main/a%20b.obj', 'main/a b.obj'],
+  ])('reads raw link %s', (input, rest) => expect(parseRepoInput(input)).toEqual({ owner: 'o', repo: 'r', rest }));
+});
+
+describe('#ref=<link>', () => {
+  it.each([
+    ['#ref=https://github.com/o/r/blob/feature/x/cad/a.step', 'feature/x/cad/a.step'],
+    ['#ref=https%3A%2F%2Fgithub.com%2Fo%2Fr%2Ftree%2Fdev', 'dev'],
+    ['#model=https://raw.githubusercontent.com/o/r/main/a.stl', 'main/a.stl'],
+    ['#ref=https://github.com/o/r', undefined],
+  ])('%s', (hash, rest) => expect(parseHash(hash)).toEqual({ kind: 'repo', owner: 'o', repo: 'r', rest }));
+
+  it('goes home for a link it cannot read', () => {
+    expect(parseHash('#ref=https://example.com/a.stl')).toEqual({ kind: 'home' });
+  });
 });
 
 describe('hash routes', () => {

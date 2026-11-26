@@ -12,10 +12,17 @@ MeshBranch é um site que mostra os modelos 3D de qualquer repositório público
 
 Cada tela tem um link próprio, fixo no commit e no arquivo. O botão **Copy link** copia esse link.
 
-Formato do link:
+Formato do link (o mesmo caminho do GitHub, depois de `#`):
 
 ```
-#/owner/repo?ref=<branch ou SHA>&path=<caminho do arquivo>
+#/owner/repo/tree/<branch>/<pasta>
+#/owner/repo/blob/<branch>/<arquivo>
+```
+
+Também dá para passar qualquer link do GitHub, como no 3dviewer.net:
+
+```
+https://patrikguerra.github.io/meshbranch/#ref=https://github.com/owner/repo/blob/<branch>/<arquivo>
 ```
 
 ## Limite do GitHub
