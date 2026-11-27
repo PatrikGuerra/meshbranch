@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { meshTopology } from './topology';
+import { brepFaces, meshTopology } from './topology';
 
 // One B-rep face per geometry group, like occt-import-js gives for STEP files.
 function withFaces(g: THREE.BufferGeometry): THREE.Mesh {
@@ -36,7 +36,27 @@ describe('meshTopology', () => {
     expect(t.vertices.filter(v => v.label === 'Center').map(v => Math.round(v.p.y)).sort()).toEqual([-5, 5]);
   });
 
-  it('returns null without face data', () => {
-    expect(meshTopology(new THREE.Mesh(new THREE.BoxGeometry()), 2)).toBeNull();
+});
+
+describe('estimated faces (STL, OBJ)', () => {
+  // toNonIndexed drops the groups, like an STL: no B-rep data at all.
+  const plain = (g: THREE.BufferGeometry) => new THREE.Mesh(g.toNonIndexed());
+
+  it('finds the 6 sides of a box', () => {
+    const t = meshTopology(plain(new THREE.BoxGeometry(10, 20, 30)), 40)!;
+    expect(t.faces).toHaveLength(6);
+    expect(t.edges).toHaveLength(12);
+    expect(t.vertices.filter(v => v.label === 'Vertex')).toHaveLength(8);
+  });
+
+  it('keeps a cylinder side as one face and finds its radius', () => {
+    const t = meshTopology(plain(new THREE.CylinderGeometry(3, 3, 10, 48)), 12)!;
+    expect(t.faces.map(f => f.shape.type).sort()).toEqual(['cylinder', 'plane', 'plane']);
+    const c = t.edges.filter(e => e.shape.type === 'circle');
+    expect(c).toHaveLength(2);
+  });
+
+  it('can be turned off', () => {
+    expect(meshTopology(plain(new THREE.BoxGeometry()), 2, [brepFaces])).toBeNull();
   });
 });

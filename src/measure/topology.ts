@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { classifyEdge, classifyFace } from './classify';
+import { estimatedFaces } from './estimate';
 import type { Edge, Face, Vertex } from './types';
 
 export type MeshTopology = {
@@ -10,8 +11,9 @@ export type MeshTopology = {
 };
 export type Topology = Map<THREE.Mesh, MeshTopology>;
 
-// Face id per triangle. STEP gives B-rep face ranges; meshes without them get null (corner snap only).
-export type FaceSource = (mesh: THREE.Mesh, triCount: number, corners: Uint32Array, pos: Float32Array) => Int32Array | null;
+// Face id per triangle. STEP gives B-rep face ranges; STL and OBJ get faces estimated from the triangles.
+// corners: welded corner ids, 3 per triangle; weldPos: x, y, z per welded id.
+export type FaceSource = (mesh: THREE.Mesh, triCount: number, corners: Uint32Array, weldPos: ArrayLike<number>) => Int32Array | null;
 
 export const brepFaces: FaceSource = (mesh, triCount) => {
   const r = mesh.userData.brepFaces as Int32Array | undefined;
@@ -22,7 +24,7 @@ export const brepFaces: FaceSource = (mesh, triCount) => {
 };
 
 // shortcut: runs on the page thread when Measure is first turned on; move to a worker if big models stall.
-export function buildTopology(meshes: readonly THREE.Mesh[], diagonal: number, faceSources: FaceSource[] = [brepFaces]): Topology {
+export function buildTopology(meshes: readonly THREE.Mesh[], diagonal: number, faceSources: FaceSource[] = [brepFaces, estimatedFaces]): Topology {
   const out: Topology = new Map();
   for (const mesh of meshes) {
     const t = meshTopology(mesh, diagonal, faceSources);
@@ -31,7 +33,7 @@ export function buildTopology(meshes: readonly THREE.Mesh[], diagonal: number, f
   return out;
 }
 
-export function meshTopology(mesh: THREE.Mesh, diagonal: number, faceSources: FaceSource[] = [brepFaces]): MeshTopology | null {
+export function meshTopology(mesh: THREE.Mesh, diagonal: number, faceSources: FaceSource[] = [brepFaces, estimatedFaces]): MeshTopology | null {
   mesh.updateWorldMatrix(true, false);
   const g = mesh.geometry, attr = g.attributes.position, idx = g.index;
   const triCount = (idx ? idx.count : attr.count) / 3;
@@ -53,7 +55,7 @@ export function meshTopology(mesh: THREE.Mesh, diagonal: number, faceSources: Fa
   const P = (id: number) => new THREE.Vector3(weldPos[3 * id], weldPos[3 * id + 1], weldPos[3 * id + 2]);
 
   let faceOfTri: Int32Array | null = null;
-  for (const src of faceSources) if ((faceOfTri = src(mesh, triCount, corners, pos))) break;
+  for (const src of faceSources) if ((faceOfTri = src(mesh, triCount, corners, weldPos))) break;
   if (!faceOfTri) return null;
 
   // Faces.

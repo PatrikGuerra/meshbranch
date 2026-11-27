@@ -2,7 +2,14 @@
 
 Este documento descreve como o MeshBranch vai medir distâncias, comprimentos e ângulos no modelo 3D. A referência de comportamento é a ferramenta **Measure** do Onshape: o usuário escolhe uma ou duas entidades (vértice, aresta ou face) e o painel mostra as medidas entre elas.
 
-Status: plano. Nada foi programado ainda. Entra no lugar do item "medir distâncias" da fase F6 do `PLAN.md`.
+Status: feito (M1 a M5, PRs #1 a #5). Entra no lugar do item "medir distâncias" da fase F6 do `PLAN.md`.
+
+O que mudou em relação ao plano, ao programar:
+
+- **Sem three-mesh-bvh.** A distância mínima usa esferas em volta de cada triângulo para pular pares longe demais. Foi rápido o bastante: 3 a 10 ms por par numa peça STEP de 8,5 mil triângulos, e até 170 ms no STL da mesma peça.
+- **Sem worker.** A topologia é montada na própria página, na primeira vez que o modo Measure é ligado. Mover para um worker fica para quando um modelo grande travar a tela.
+- **Um rótulo por vez.** Na cena aparece só o valor da primeira linha, ou da linha sob o mouse, para os rótulos não se cobrirem.
+- **Faces estimadas (M5).** Vizinhos com dobra de até 20° ficam na mesma região. Dentro de uma região curva, um trecho plano vira face própria quando tem 3 ou mais triângulos, ou 10% da área.
 
 ## 1. O que o usuário pode medir
 

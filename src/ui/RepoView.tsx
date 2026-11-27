@@ -7,11 +7,12 @@ import { rateNotice } from '../github/limit';
 import { FORMAT_LABEL, formatOf, isLfsPointer } from '../importers/formats';
 import { loadModel, stepReading, stopStepReader } from '../importers/load';
 import { buildParts, visibility, type PartNode, type Parts } from '../viewer/parts';
-import type { ModelStats, SceneView, View } from '../viewer/scene';
+import type { ModelStats, Projection, SceneView, View } from '../viewer/scene';
 import { FileTree, TypeBadge } from './FileTree';
 import { Icon } from './icons';
 import { ModelTree } from './ModelTree';
 import { PartPanel } from './PartPanel';
+import { ViewToolbar, type Display } from './ViewToolbar';
 import { MeasurePanel } from './MeasurePanel';
 import { MeasureTool, type MeasureState } from '../measure/tool';
 import type { Entity } from '../measure/types';
@@ -186,6 +187,13 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
     return () => { view.onPick = null; };
   }, [view, parts]);
 
+  // Solid, solid with edges or wireframe for the whole model; drops the per-part view modes.
+  const setDisplay = (d: Display) => { view?.clearPartModes(); setModes(m => ({ ...m, edges: d === 'edges', wire: d === 'wire' })); };
+  // Perspective or orthographic camera; kept across files in this browser.
+  const [projection, setProjection] = useState<Projection>(() => localStorage.getItem('meshbranch-projection') === 'ortho' ? 'ortho' : 'persp');
+  const setProj = (p: Projection) => { setProjection(p); try { localStorage.setItem('meshbranch-projection', p); } catch { /* this visit only */ } };
+  useEffect(() => { view?.setProjection(projection); }, [view, projection]);
+
   // ----- Measure mode (docs/MEASURE.md) -----
   const [measuring, setMeasuring] = useState(false);
   const [mstate, setMstate] = useState<MeasureState | null>(null);
@@ -204,7 +212,15 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
     const onKey = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement).matches('input, textarea')) return;
       if (e.key.toLowerCase() === 'f' && !e.ctrlKey && !e.metaKey) view?.fit('fit');
-      if (e.key.toLowerCase() === 'm' && !e.ctrlKey && !e.metaKey && !e.altKey) setMeasuring(m => !m);
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const k = e.key.toLowerCase();
+      if (k === 'm') setMeasuring(m => !m);
+      if (k === 'e') setDisplay('edges');
+      if (k === 'w') setDisplay('wire');
+      if (k === 'g') setModes(m => ({ ...m, grid: !m.grid }));
+      if (e.key === '5') setProj(view?.projection === 'ortho' ? 'persp' : 'ortho');
+      const v = ({ '0': 'iso', '7': 'top', '1': 'front', '3': 'right' } as Record<string, View>)[e.key];
+      if (v) view?.fit(v);
       if (e.key === 'Escape') {
         setSelected(null);
         const t = tool.current;
@@ -256,15 +272,9 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
                 <a className="btn ghost small" href={ghUrl} target="_blank" rel="noopener">View on GitHub</a>
               </> : <>{dir && <><Icon name="folder" />{dir.split('/').map((s, i) => <span key={i} className="seg">{s} /</span>)}</>}<span className="seg">No file selected</span></>}
             </div>
-            <div className="toolbar" role="toolbar" aria-label="View">
-              {(['fit', 'iso', 'top', 'front', 'right'] as View[]).map(v => <button key={v} className="tb" onClick={() => view?.fit(v)}>{v[0].toUpperCase() + v.slice(1)}</button>)}
-              <span className="sep" />
-              <button className="tb" aria-pressed={measuring} disabled={!parts} onClick={() => setMeasuring(m => !m)} title="Measure distances (M)">Measure</button>
-              <span className="sep" />
-              <button className="tb" aria-pressed={modes.edges} onClick={() => { view?.clearPartModes(); setModes(m => ({ ...m, edges: !m.edges })); }}>Edges</button>
-              <button className="tb" aria-pressed={modes.wire} onClick={() => { view?.clearPartModes(); setModes(m => ({ ...m, wire: !m.wire })); }}>Wireframe</button>
-              <button className="tb" aria-pressed={modes.grid} onClick={() => setModes(m => ({ ...m, grid: !m.grid }))}>Grid</button>
-            </div>
+            <ViewToolbar disabled={!parts} measuring={measuring} display={modes.wire ? 'wire' : modes.edges ? 'edges' : 'solid'} grid={modes.grid}
+              projection={projection} onProjection={setProj}
+              onView={v => view?.fit(v)} onMeasure={() => setMeasuring(m => !m)} onDisplay={setDisplay} onGrid={() => setModes(m => ({ ...m, grid: !m.grid }))} />
           </div>
           <Viewer dark={dark} onView={onView}>
             {state.status === 'loading' && <div className="overlay"><div className="loader"><span className="spin" />Loading {owner}/{repo}…</div></div>}

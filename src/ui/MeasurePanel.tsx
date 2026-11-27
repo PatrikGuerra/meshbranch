@@ -54,7 +54,7 @@ export function MeasurePanel({ state, partName, onFocus, onClear, onClose }: {
   };
 
   const { a, b, rows } = state;
-  const copy = (i: number, v: string) => navigator.clipboard?.writeText(v.replace(/[^\d.\-°]/g, '')).then(() => setCopied(i), () => {});
+  const copy = (i: number, v: string) => navigator.clipboard?.writeText(v.replace(/\s*mm²?$/, '')).then(() => setCopied(i), () => {});
   const shown = small ? rows.slice(0, 1) : rows;
   return (
     <div ref={box} className="measure" style={{ right: pos.right, bottom: pos.bottom }} role="region" aria-label="Measure">
