@@ -55,6 +55,7 @@ async function readStep(buffer: ArrayBuffer): Promise<THREE.Object3D> {
     if (!mats.has(key)) mats.set(key, material(c));
     const mesh = new THREE.Mesh(g, mats.get(key)!);
     mesh.name = m.name;
+    if (m.faces) mesh.userData.brepFaces = m.faces;
     return mesh;
   };
   const build = (n: OcctNode): THREE.Object3D => {
