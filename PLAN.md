@@ -330,7 +330,7 @@ meshbranch/
 | F4.1 | Git LFS | Abrir arquivos guardados no Git LFS, baixando de `media.githubusercontent.com`. Se o endereço não aceitar CORS, fica o aviso com link para baixar. |
 | F5 | Acabamento de produto (feito) | Tema, acessibilidade, estados vazios e de erro, página inicial com exemplos. Fecha a **V1**. |
 | V1.1 | Mais formatos | Abrir 3MF, glTF/GLB e PLY, com árvore de peças, filtros e testes com arquivos de exemplo. |
-| F6 | Extras | Traduções (pt-BR primeiro), tags no seletor, token e repos privados, `.meshbranch/index.json` gerado por Action, medir, corte, vista explodida, comparação visual entre branches, botão "Open in MeshBranch" para READMEs. |
+| F6 | Extras (medidor de distâncias: `docs/MEASURE.md`) | Traduções (pt-BR primeiro), tags no seletor, token e repos privados, `.meshbranch/index.json` gerado por Action, medir, corte, vista explodida, comparação visual entre branches, botão "Open in MeshBranch" para READMEs. |
 
 ## 14. Riscos e decisões abertas
 
