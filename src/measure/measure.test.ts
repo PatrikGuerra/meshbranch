@@ -53,3 +53,42 @@ describe('measure one item', () => {
     expect(arcLength(pts, c, n, 2)).toBeCloseTo(Math.PI, 9);
   });
 });
+
+describe('measure two items', () => {
+  const at = (g: THREE.BufferGeometry, x: number) => { const m = withFaces(g); m.position.x = x; return meshTopology(m, 60)!; };
+  // Two 10 mm cubes with a 12.4 mm gap between the facing sides.
+  const left = at(new THREE.BoxGeometry(10, 10, 10), 0), right = at(new THREE.BoxGeometry(10, 10, 10), 22.4);
+  const faceAtX = (t: ReturnType<typeof at>, x: number) => t.faces.find(f => Math.abs(f.centroid.x - x) < 1e-6)!;
+  const row = (rows: { label: string; value: string }[], l: string) => rows.find(r => r.label === l)?.value;
+
+  it('gives minimum, maximum, center, perpendicular and angle between parallel faces', () => {
+    const rows = measure(faceAtX(left, 5), faceAtX(right, 17.4));
+    expect(row(rows, 'Minimum')).toBe('12.40 mm');
+    expect(row(rows, 'Center')).toBe('12.40 mm');
+    expect(row(rows, 'Perpendicular')).toBe('12.40 mm');
+    expect(row(rows, 'Angle')).toBe('0.00°');
+    expect(row(rows, 'Maximum')).toBe(`${Math.hypot(12.4, 10, 10).toFixed(2)} mm`);
+    expect(rows.every(r => !r.approx)).toBe(true);
+  });
+
+  it('gives the distance from a vertex to a face', () => {
+    const v = left.vertices.find(x => x.label === 'Vertex' && x.p.x < 0)!;
+    const rows = measure(v, faceAtX(right, 17.4));
+    expect(row(rows, 'Minimum')).toBe('22.40 mm');
+    expect(row(rows, 'Perpendicular')).toBe('22.40 mm');
+  });
+
+  it('gives 90 degrees between a face and a crossing edge, and the gap between edges', () => {
+    const edge = right.edges.find(e => e.shape.type === 'line' && Math.abs((e.shape as { dir: THREE.Vector3 }).dir.x) > 0.99)!;
+    expect(row(measure(faceAtX(left, 5), edge), 'Angle')).toBe('90.00°');
+    expect(row(measure(faceAtX(left, 5), edge), 'Minimum')).toBe('12.40 mm');
+  });
+
+  it('gives the distance between two parallel hole axes', () => {
+    const a = at(new THREE.CylinderGeometry(3, 3, 10, 48), 0), b = at(new THREE.CylinderGeometry(2, 2, 10, 48), 15);
+    const cyl = (t: ReturnType<typeof at>) => t.faces.find(f => f.shape.type === 'cylinder')!;
+    const rows = measure(cyl(a), cyl(b));
+    expect(row(rows, 'Axis distance')).toBe('15.00 mm');
+    expect(row(rows, 'Minimum')).toBe('10.00 mm');
+  });
+});
