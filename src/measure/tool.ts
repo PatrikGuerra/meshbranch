@@ -2,7 +2,8 @@ import type * as THREE from 'three';
 import type { SceneView } from '../viewer/scene';
 import { measure } from './measure';
 import { COLORS, disposeGroup, drawEntity, drawRows, setOverlayScale } from './overlay';
-import { pickCorner } from './picker';
+import { pickTopology } from './picker';
+import { buildTopology, type Topology } from './topology';
 import type { Entity, Row } from './types';
 
 export type MeasureState = { a: Entity | null; b: Entity | null; hover: Entity | null; rows: Row[] };
@@ -18,10 +19,12 @@ export class MeasureTool {
   dark = false;
   private layer: THREE.Object3D | null = null;
   private hoverLayer: THREE.Object3D | null = null;
-  picker: Picker = (v, e, o) => pickCorner(v, e, o.scale);
+  readonly topo: Topology;
+  picker: Picker = (v, e, o) => pickTopology(v, this.topo, e, o.snap, o.scale);
 
   constructor(private view: SceneView, private onChange: (s: MeasureState) => void) {
     setOverlayScale(view.modelDiagonal());
+    this.topo = buildTopology(view.modelMeshes(), view.modelDiagonal());
     view.setTool(this);
   }
 
