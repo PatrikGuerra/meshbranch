@@ -135,44 +135,9 @@ a{color:var(--accent-text);text-decoration:none}a:hover{text-decoration:underlin
 .dotc.low{background:var(--warn)}
 .toast{position:fixed;bottom:44px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--panel);padding:8px 14px;border-radius:8px;font-size:12.5px;box-shadow:var(--shadow);z-index:60}
 
-/* Branches */
-.branch-wrap{position:relative}
-.ref .sha{color:var(--faint);font-size:11.5px}
-.dot{width:7px;height:7px;border-radius:50%;background:var(--warn);box-shadow:0 0 0 3px var(--warn-weak)}
-.newer{width:7px;height:7px;border-radius:50%;background:var(--warn);flex:none}
-.menu{position:absolute;top:36px;left:0;width:400px;max-width:calc(100vw - 24px);background:var(--panel);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow);z-index:30;overflow:hidden;display:flex;flex-direction:column;max-height:min(520px,calc(100vh - 80px))}
-.menu-head{padding:10px 12px;border-bottom:1px solid var(--border);font-weight:600;display:flex;justify-content:space-between;align-items:center}
-.menu-search{padding:8px 10px;border-bottom:1px solid var(--border)}
-.menu-list{overflow:auto;flex:1}
-.menu-item{display:flex;align-items:center;gap:6px;padding-right:8px}
-.menu-item:hover{background:var(--hover)}
-.menu-item.cur{background:var(--sel)}
-.menu-main{display:flex;align-items:center;gap:10px;flex:1;min-width:0;padding:9px 4px 9px 12px;border:0;background:none;text-align:left;cursor:pointer}
-.menu-main .grow{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.menu-main .meta{color:var(--muted);font-size:11.5px;white-space:nowrap}
-.check{width:16px;color:var(--accent);display:grid}
-.menu-foot{display:flex;align-items:center;gap:10px;justify-content:space-between;padding:8px 12px;border-top:1px solid var(--border);color:var(--faint);font-size:11.5px;background:var(--panel-2)}
-.badge{font-size:11px;font-weight:600;padding:1px 7px;border-radius:999px;background:var(--warn-weak);color:var(--warn);border:1px solid var(--warn-border);white-space:nowrap}
-.tag{font-size:10.5px;padding:0 6px;border:1px solid var(--border-strong);border-radius:4px;color:var(--muted);margin-left:6px}
-.pill{font-size:11px;border:1px solid var(--border-strong);border-radius:999px;padding:0 7px;color:var(--muted);font-weight:500}
 .banner .btn.small{height:26px}
 .banner-out{background:color-mix(in srgb,var(--danger) 12%,var(--panel));border-bottom-color:color-mix(in srgb,var(--danger) 35%,var(--panel))}
 .banner-out>svg{color:var(--danger)}
-.file-notice{display:flex;align-items:center;gap:10px;padding:6px 12px;background:var(--warn-weak);border-bottom:1px solid var(--warn-border);font-size:12.5px}
-.file-notice>svg{color:var(--warn)}
-.file-notice .grow{flex:1}
-.modal{position:fixed;inset:0;background:rgba(10,12,16,.45);display:grid;place-items:center;z-index:50;padding:20px}
-.dialog{width:min(720px,100%);max-height:calc(100vh - 40px);display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);overflow:hidden}
-.dialog header{padding:14px 16px;border-bottom:1px solid var(--border)}
-.dialog h3{margin:0 0 2px;font-size:14px}.dialog header p{margin:0;color:var(--muted);font-size:12px}
-.dialog-body{overflow:auto}
-.dialog table{width:100%;border-collapse:collapse}
-.dialog td,.dialog th{padding:8px 16px;border-bottom:1px solid var(--border);text-align:left}
-.dialog th{font-size:11px;text-transform:uppercase;color:var(--muted);letter-spacing:.05em;font-weight:600;position:sticky;top:0;background:var(--panel)}
-.dialog footer{padding:12px 16px;display:flex;align-items:center;gap:8px;background:var(--panel-2);border-top:1px solid var(--border)}
-.file-cell{display:flex;align-items:center;gap:8px}
-.st-new{color:var(--accent-text);font-weight:600}.st-mod{color:var(--warn);font-weight:600}
-
 /* Home */
 .home{min-height:100%;background:radial-gradient(90% 60% at 50% 0%,var(--accent-weak),transparent 70%),var(--bg);display:flex;flex-direction:column}
 .home-top{display:flex;align-items:center;justify-content:space-between;padding:14px 22px}

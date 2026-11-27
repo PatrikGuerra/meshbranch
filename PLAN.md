@@ -325,7 +325,7 @@ meshbranch/
 | F0 | Plano e mock | Este documento e `mock/index.html` (feito). |
 | F1 | MVP público (feito) | Colar URL de repo público, ver a árvore e abrir STEP, STL e OBJ. Publicado no Pages. |
 | F2 | Peças (feito) | Árvore de peças com olho, isolar, seleção nos dois sentidos, propriedades. Cor, transparência e modo de vista por peça (R16). O link direto já saiu na F1. |
-| F3 | Branches (feito) | Seletor, troca mantendo o arquivo, cálculo de "mais novo", banner e "Compare". |
+| F3 | Branches (removido) | Seletor, comparação e avisos de branch mais nova foram tirados a pedido do usuário: enchiam a tela de avisos. Fica só: um link de branch, pasta ou arquivo abre aquela branch e lista os arquivos. |
 | F4 | Cache e limite (feito) | Arquivos 3D guardados no navegador pelo SHA do blob (IndexedDB), sem baixar de novo, nem em outra branch. Aviso no topo quando o limite de pedidos acaba, com a hora da liberação. O contador já saiu na F1. |
 | F4.1 | Git LFS | Abrir arquivos guardados no Git LFS, baixando de `media.githubusercontent.com`. Se o endereço não aceitar CORS, fica o aviso com link para baixar. |
 | F5 | Acabamento de produto (feito) | Tema, acessibilidade, estados vazios e de erro, página inicial com exemplos. Fecha a **V1**. |

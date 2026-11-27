@@ -1,12 +1,9 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import type * as THREE from 'three';
 import { buildHash, splitRefPath, type Route } from '../app/route';
-import { cachedComparison, compareCommits, currentRate, download, getDefaultBranch, getTree, GitHubError, listBranches, onRateLimit, rawUrl, resolveCommit, type RateLimit, type Tree } from '../github/client';
-import { bestBranch, MIN_REMAINING, newer3d, newerIndex, pickCandidates } from '../branches/newer';
+import { download, getDefaultBranch, getTree, GitHubError, listBranches, onRateLimit, rawUrl, resolveCommit, type RateLimit, type Tree } from '../github/client';
 import { getBlob, putBlob } from '../github/blobCache';
 import { rateNotice } from '../github/limit';
-import { BranchMenu, type CheckState } from './BranchMenu';
-import { CompareDialog } from './CompareDialog';
 import { FORMAT_LABEL, formatOf, isLfsPointer } from '../importers/formats';
 import { loadModel } from '../importers/load';
 import { buildParts, visibility, type PartNode, type Parts } from '../viewer/parts';
@@ -53,13 +50,6 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
   const [, bump] = useReducer((n: number) => n + 1, 0); // re-render after changing the 3D scene in place
   const [filesClosed, toggleFiles] = useStoredFlag('meshbranch-files-closed', false);
   const [propsClosed, toggleProps] = useStoredFlag('meshbranch-props-closed', false);
-  const [branches, setBranches] = useState<Map<string, string> | null>(null);
-  const [defaultBranch, setDefaultBranch] = useState<string>();
-  const [branchesNonce, refreshBranches] = useReducer((n: number) => n + 1, 0);
-  const [checks, setChecks] = useState<Map<string, CheckState>>(new Map());
-  const [comparing, setComparing] = useState<string | null>(null);
-  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
-  const switching = useRef(false);
   const onView = useCallback((v: SceneView | null) => setView(v), []);
 
   useEffect(() => onRateLimit(setRate), []);
@@ -86,10 +76,8 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
         throw e instanceof GitHubError && e.status === 404 ? new GitHubError(`No branch or commit named “${ref}” in ${owner}/${repo}.`, 404) : e;
       });
       const tree = await getTree(owner, repo, sha);
-      // Switching branch keeps the open file when it exists there; otherwise open the branch itself.
-      if (switching.current && p && !tree.entries.some(e => e.path === p)) { if (live) setToast(`${p.split('/').pop()} is not on ${ref}`); p = ''; }
-      if (live) { switching.current = false; setState({ status: 'ready', ref, sha, tree, isDefault: !rest }); setTarget(p); }
-    })().catch((e: Error) => { if (live) { switching.current = false; setState({ status: 'error', message: e.message }); } });
+      if (live) { setState({ status: 'ready', ref, sha, tree, isDefault: !rest }); setTarget(p); }
+    })().catch((e: Error) => { if (live) setState({ status: 'error', message: e.message }); });
     return () => { live = false; };
   }, [owner, repo, rest]);
 
@@ -100,54 +88,6 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
   useEffect(() => {
     document.title = `${path ? `${path.split('/').pop()} · ` : ''}${owner}/${repo}${ready ? ` @ ${ready.ref}` : ''} · MeshBranch`;
   }, [path, owner, repo, ready]);
-
-  // ----- Branches (PLAN.md 6.3): list them, then compare up to MAX_COMPARES while the rate limit allows -----
-  useEffect(() => {
-    let live = true;
-    Promise.all([listBranches(owner, repo, { fresh: branchesNonce > 0 }), getDefaultBranch(owner, repo)])
-      .then(([b, d]) => { if (live) { setBranches(b); setDefaultBranch(d); } })
-      .catch(() => { /* the selector shows only the current branch */ });
-    return () => { live = false; };
-  }, [owner, repo, branchesNonce]);
-
-  const compareOne = useCallback(async (base: string, headSha: string, force: boolean) => {
-    const cached = cachedComparison(owner, repo, base, headSha);
-    const r = currentRate();
-    if (!cached && !force && r && r.remaining < MIN_REMAINING) return { status: 'skipped' } as CheckState;
-    try { return { status: 'done', files: newer3d(cached ?? await compareCommits(owner, repo, base, headSha)) } as CheckState; }
-    catch (e) { return { status: 'error', message: (e as Error).message } as CheckState; }
-  }, [owner, repo]);
-
-  useEffect(() => {
-    if (!ready || !branches) return;
-    let live = true;
-    setChecks(new Map());
-    (async () => {
-      for (const b of pickCandidates(branches, ready, defaultBranch)) {
-        if (!live) return;
-        setChecks(m => new Map(m).set(b, { status: 'pending' }));
-        const res = await compareOne(ready.sha, branches.get(b)!, false);
-        if (live) setChecks(m => new Map(m).set(b, res));
-      }
-    })();
-    return () => { live = false; };
-  }, [ready, branches, defaultBranch, compareOne]);
-
-  const checkOne = async (b: string) => {
-    if (!ready || !branches) return;
-    setChecks(m => new Map(m).set(b, { status: 'pending' }));
-    const res = await compareOne(ready.sha, branches.get(b)!, true);
-    setChecks(m => new Map(m).set(b, res));
-  };
-  const newer = useMemo(() => new Map([...checks].flatMap(([b, c]) => c.status === 'done' ? [[b, c.files] as const] : [])), [checks]);
-  const best = bestBranch(newer);
-  const newerFiles = useMemo(() => newerIndex(newer), [newer]);
-  const closeCompare = useCallback(() => setComparing(null), []);
-  const switchTo = (b: string, p = path) => {
-    switching.current = true;
-    setComparing(null);
-    navigate({ kind: 'repo', owner, repo, rest: p ? `${b}/${p}` : b }, !!p);
-  };
 
   // Keep the address bar canonical: blob/ for files, tree/ for branches and folders.
   useEffect(() => {
@@ -268,8 +208,7 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
         <nav className="crumbs" aria-label="Repository">
           <Icon name="repo" /><span>{owner}</span><span>/</span><strong>{repo}</strong>
         </nav>
-        {ready && <BranchMenu current={ready.ref} sha={ready.sha} defaultBranch={defaultBranch} branches={branches} checks={checks}
-          onSwitch={b => switchTo(b)} onCheck={checkOne} onRefresh={refreshBranches} />}
+        {ready && <span className="ref" title={`Commit ${ready.sha}`}><Icon name="branch" /><span className="mono">{ready.ref}</span><span className="sha mono">{ready.sha.slice(0, 7)}</span></span>}
         <div className="spacer" />
         <button className="icon-btn" onClick={onToggleTheme} title={dark ? 'Light theme' : 'Dark theme'} aria-label={dark ? 'Switch to light theme' : 'Switch to dark theme'}><Icon name={dark ? 'sun' : 'moon'} /></button>
         <button className="btn" onClick={copyLink}><Icon name="link" />Copy link</button>
@@ -277,21 +216,11 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
 
       {ready?.tree.truncated && <div className="banner"><Icon name="warn" /><span className="grow">This repository is very large. GitHub returned only part of its file list, so some files are missing.</span></div>}
       {(() => { const n = rateNotice(rate); return n && <div className={`banner ${n.level === 'out' ? 'banner-out' : ''}`} role="status"><Icon name="warn" /><span className="grow">{n.text}</span></div>; })()}
-      {ready && best && !dismissed.has(`${ready.sha}:${best.branch}`) && (
-        <div className="banner">
-          <Icon name="warn" />
-          <span className="grow"><span className="mono"><b>{best.branch}</b></span> has <b>{best.files.length} newer 3D {best.files.length === 1 ? 'file' : 'files'}</b> than <span className="mono">{ready.ref}</span></span>
-          <button className="btn small" onClick={() => setComparing(best.branch)}>Compare</button>
-          <button className="btn small primary" onClick={() => switchTo(best.branch)}>Switch to {best.branch}</button>
-          <button className="icon-btn small" aria-label="Dismiss" title="Dismiss" onClick={() => setDismissed(s => new Set(s).add(`${ready.sha}:${best.branch}`))}><Icon name="x" /></button>
-        </div>
-      )}
-
       <main className={`layout ${filesClosed ? 'files-closed' : ''}`}>
         <aside className="sidebar left" aria-label="Repository files">
           {filesClosed
             ? <button className="rail" onClick={toggleFiles} title="Show files" aria-label="Show files"><Icon name="panel" /><span>Files</span></button>
-            : ready ? <FileTree key={ready.sha} entries={ready.tree.entries} selected={path} reveal={target} newer={newerFiles} onOpen={open} onCollapse={toggleFiles} />
+            : ready ? <FileTree key={ready.sha} entries={ready.tree.entries} selected={path} reveal={target} onOpen={open} onCollapse={toggleFiles} />
             : <div className="tree-empty">{state.status === 'loading' ? 'Loading files…' : ''}</div>}
         </aside>
 
@@ -313,14 +242,6 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
               <button className="tb" aria-pressed={modes.grid} onClick={() => setModes(m => ({ ...m, grid: !m.grid }))}>Grid</button>
             </div>
           </div>
-          {path && newerFiles.get(path) && (
-            <div className="file-notice">
-              <Icon name="warn" />
-              <span className="grow">A newer version of this file is on <span className="mono"><b>{newerFiles.get(path)![0]}</b></span>
-                {newerFiles.get(path)!.length > 1 && <> and {newerFiles.get(path)!.length - 1} more {newerFiles.get(path)!.length === 2 ? 'branch' : 'branches'}</>}.</span>
-              <button className="btn small" onClick={() => switchTo(newerFiles.get(path)![0])}>Open it there</button>
-            </div>
-          )}
           <Viewer dark={dark} onView={onView}>
             {state.status === 'loading' && <div className="overlay"><div className="loader"><span className="spin" />Loading {owner}/{repo}…</div></div>}
             {state.status === 'error' && <div className="overlay"><div className="card"><h2>Could not open {owner}/{repo}</h2><p>{state.message}</p><button className="btn primary" onClick={onHome}>Back to home</button></div></div>}
@@ -371,10 +292,6 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
         {file.status === 'ready' && <span className="r">{parts!.leaves.filter(l => visibility(l) !== 'off').length.toLocaleString('en-US')} / {parts!.leaves.length.toLocaleString('en-US')} {parts!.leaves.length === 1 ? 'part' : 'parts'} visible · {Math.round(file.stats.triangles).toLocaleString('en-US')} {Math.round(file.stats.triangles) === 1 ? 'triangle' : 'triangles'} · {file.stats.size.x.toFixed(1)} × {file.stats.size.y.toFixed(1)} × {file.stats.size.z.toFixed(1)} mm</span>}
       </footer>
       {toast && <div className="toast" role="status">{toast}</div>}
-      {comparing && ready && newer.get(comparing) && (
-        <CompareDialog owner={owner} repo={repo} current={ready.ref} branch={comparing} files={newer.get(comparing)!}
-          onOpen={p => switchTo(comparing, p)} onSwitch={() => switchTo(comparing)} onClose={closeCompare} />
-      )}
     </div>
   );
 }
