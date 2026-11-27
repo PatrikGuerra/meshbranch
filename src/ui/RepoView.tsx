@@ -49,6 +49,7 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
   const [selected, setSelected] = useState<PartNode | null>(null);
   const [, bump] = useReducer((n: number) => n + 1, 0); // re-render after changing the 3D scene in place
   const [filesClosed, toggleFiles] = useStoredFlag('meshbranch-files-closed', false);
+  const [modelClosed, toggleModel] = useStoredFlag('meshbranch-model-closed', false);
   const [propsClosed, toggleProps] = useStoredFlag('meshbranch-props-closed', false);
   const onView = useCallback((v: SceneView | null) => setView(v), []);
 
@@ -215,7 +216,7 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
 
       {ready?.tree.truncated && <div className="banner"><Icon name="warn" /><span className="grow">This repository is very large. GitHub returned only part of its file list, so some files are missing.</span></div>}
       {(() => { const n = rateNotice(rate); return n && <div className={`banner ${n.level === 'out' ? 'banner-out' : ''}`} role="status"><Icon name="warn" /><span className="grow">{n.text}</span></div>; })()}
-      <main className={`layout ${filesClosed ? 'files-closed' : ''}`}>
+      <main className={`layout ${filesClosed ? 'files-closed' : ''} ${modelClosed ? 'model-closed' : ''}`}>
         <aside className="sidebar left" aria-label="Repository files">
           {filesClosed
             ? <button className="rail" onClick={toggleFiles} title="Show files" aria-label="Show files"><Icon name="panel" /><span>Files</span></button>
@@ -262,12 +263,19 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
         </section>
 
         <aside className="sidebar right" aria-label="Model">
+          {modelClosed
+            ? <button className="rail" onClick={toggleModel} title="Show model" aria-label="Show model"><Icon name="panel" /><span>Model</span></button>
+            : <>
           <div className="model-wrap">
-            <div className="panel-head"><span>Model</span>
-              {parts && <span className="actions">
-                <button className="link-btn" onClick={() => setShown(parts.root.meshes, true)}>Show all</button>
-                <button className="link-btn" onClick={() => setShown(parts.root.meshes, false)}>Hide all</button>
-              </span>}
+            <div className="panel-head has-toggle">
+              <button className="panel-toggle" onClick={toggleModel} title="Hide model" aria-label="Hide model">Model</button>
+              <span className="actions">
+                {parts && <>
+                  <button className="link-btn" onClick={() => setShown(parts.root.meshes, true)}>Show all</button>
+                  <button className="link-btn" onClick={() => setShown(parts.root.meshes, false)}>Hide all</button>
+                </>}
+              </span>
+              <span className="head-icon"><Icon name="panel" /></span>
             </div>
             {parts ? <ModelTree key={path} parts={parts} selected={selected} onSelect={setSelected} onToggle={toggle} onIsolate={isolate} />
               : <div className="tree-empty">{file.status === 'loading' ? 'Reading parts…' : 'Open a file to see its parts.'}</div>}
@@ -280,6 +288,7 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
               {selected && <span className="actions"><button className="link-btn" onClick={() => setSelected(null)}>Clear</button></span>}
             </div>
             {!propsClosed && <PartPanel view={view} parts={parts} selected={selected} format={fmt ? FORMAT_LABEL[fmt] : ''} size={mb(entry?.size ?? 0)} onChange={bump} />}
+          </>}
           </>}
         </aside>
       </main>

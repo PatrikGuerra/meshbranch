@@ -88,7 +88,7 @@ Biblioteca para a BVH: [three-mesh-bvh](https://github.com/gkjohnson/three-mesh-
 | `Shift` + clique | troca só a segunda entidade |
 | Clique de novo numa entidade escolhida | tira ela da seleção |
 | `Esc` | limpa a medida; com nada escolhido, sai do modo |
-| Painel "Measure" | à direita, acima de Properties. Mostra as duas entidades (tipo e peça) e a tabela de medidas |
+| Painel "Measure" | painel flutuante no canto inferior direito do visualizador 3D, por cima da cena. Aparece só com o modo ligado. Mostra as duas entidades (tipo e peça) e a tabela de medidas. Pode ser recolhido para uma barra só com o valor principal, e arrastado pela barra do título para outro lugar do visualizador (a posição fica guardada no navegador) |
 | Linhas na cena | uma linha tracejada para cada medida (mínima, máxima, centro), com o valor ao lado. Passar o mouse numa linha da tabela destaca a linha na cena |
 | Copiar | clique num valor copia o número |
 | Peças escondidas | não podem ser escolhidas |
@@ -96,7 +96,7 @@ Biblioteca para a BVH: [three-mesh-bvh](https://github.com/gkjohnson/three-mesh-
 Desenho do painel:
 
 ```
-MEASURE                                  Clear
+┌ MEASURE ─────────────────────── – ✕ ┐
 A  Face (plane) · Base
 B  Face (plane) · Lid
 
@@ -105,7 +105,10 @@ Maximum      ≈ 94.31 mm  ΔX 66.0  ΔY 66.0  ΔZ 12.40
 Center       12.40 mm    ΔX 0.00  ΔY 0.00  ΔZ 12.40
 Perpendicular 12.40 mm
 Angle         0.00°
+└─────────────────────────────────────┘
 ```
+
+O painel tem cerca de 320 px de largura e fica 12 px acima da dica "Drag to orbit…" e à esquerda do canto. Ele não cobre o view cube, que fica no canto superior direito. Com o painel Model recolhido à direita, o visualizador fica mais largo e o painel continua no mesmo canto.
 
 O modo de medida desliga a seleção de peças (F2) enquanto está ligado, para um clique não fazer duas coisas.
 

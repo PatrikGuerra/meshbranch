@@ -35,6 +35,9 @@ a{color:var(--accent-text);text-decoration:none}a:hover{text-decoration:underlin
 .banner .grow{flex:1}
 .layout{display:grid;grid-template-columns:var(--left,280px) 1fr var(--right,300px);min-height:0}
 .layout.files-closed{--left:40px}
+.layout.model-closed{--right:40px}
+.right:has(> .rail){overflow:hidden}
+.head-icon{display:grid;color:var(--muted);margin-left:4px}
 .rail{display:flex;flex-direction:column;align-items:center;gap:10px;padding:12px 0;border:0;background:none;color:var(--muted);cursor:pointer;height:100%;width:100%}
 .rail:hover{background:var(--hover);color:var(--text)}
 .rail span{writing-mode:vertical-rl;font-size:11px;font-weight:650;letter-spacing:.06em;text-transform:uppercase}
@@ -44,7 +47,7 @@ a{color:var(--accent-text);text-decoration:none}a:hover{text-decoration:underlin
 /* The whole title bar is the click target: the toggle stretches over the bar, other buttons sit on top. */
 .panel-head.has-toggle{position:relative}
 .panel-head.has-toggle .panel-toggle::after{content:"";position:absolute;inset:0}
-.panel-head.has-toggle .actions{position:relative;z-index:1}
+.panel-head.has-toggle .actions{position:relative;z-index:1;margin-left:auto}
 .panel-head.has-toggle:hover{background:var(--hover);color:var(--text)}
 .panel-bar{width:100%;border:0;background:none;cursor:pointer;text-align:left;font-family:inherit}
 .panel-bar:hover{background:var(--hover);color:var(--text)}
