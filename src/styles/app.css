@@ -166,3 +166,26 @@ a{color:var(--accent-text);text-decoration:none}a:hover{text-decoration:underlin
 @media (max-width:1100px){.layout{--left:240px;--right:260px}}
 @media (max-width:860px){.layout{--left:200px;--right:230px}.toolbar .tb:nth-child(-n+5){display:none}.toolbar .sep{display:none}.hint{display:none}}
 @media (max-width:720px){.features{grid-template-columns:1fr}.home h1{font-size:26px}.home-foot{flex-direction:column}}
+
+/* Measure */
+.tb:disabled{opacity:.45;cursor:default}
+.labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.m-label{font:600 11.5px/1 "JetBrains Mono",ui-monospace,Consolas,monospace;padding:4px 7px;border-radius:6px;background:var(--text);color:var(--panel);white-space:nowrap;box-shadow:var(--shadow)}
+.m-tag{font:700 10px/1 Inter,system-ui,sans-serif;padding:3px 5px;border-radius:5px;background:var(--panel);color:var(--text);border:1px solid var(--border-strong);transform:translate(10px,-12px)}
+.measure{position:absolute;z-index:5;width:340px;max-width:calc(100% - 24px);background:var(--panel);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow);font-size:12.5px;overflow:hidden}
+.m-head{display:flex;align-items:center;justify-content:space-between;padding:6px 6px 6px 12px;border-bottom:1px solid var(--border);cursor:move;user-select:none;font-size:11px;font-weight:650;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.m-actions{display:flex;align-items:center;gap:2px;text-transform:none;letter-spacing:0;font-weight:500}
+.m-picks{display:grid;gap:4px;padding:8px 12px}
+.m-pick{display:flex;align-items:center;gap:6px;min-width:0;white-space:nowrap}
+.m-pick.empty{color:var(--faint)}
+.m-part{color:var(--muted);overflow:hidden;text-overflow:ellipsis}
+.m-dot{display:grid;place-items:center;width:18px;height:18px;border-radius:50%;font-size:10px;font-weight:700;color:#fff;flex:none}
+.m-a{background:#0d9488}.m-b{background:#ea580c}
+.m-rows{width:100%;border-collapse:collapse;border-top:1px solid var(--border)}
+.m-rows th{text-align:left;font-weight:500;color:var(--muted);padding:5px 0 5px 12px;white-space:nowrap}
+.m-rows td{padding:3px 12px 3px 6px;white-space:nowrap}
+.m-rows tr:hover{background:var(--hover)}
+.m-val{border:0;background:none;padding:2px 4px;border-radius:4px;cursor:copy;font:600 12.5px "JetBrains Mono",ui-monospace,Consolas,monospace;color:var(--text)}
+.m-val:hover{background:var(--border)}
+.m-delta{color:var(--faint);font:11px "JetBrains Mono",ui-monospace,Consolas,monospace;text-align:right}
+.m-hint{padding:6px 12px;color:var(--faint);font-size:11px;border-top:1px solid var(--border)}

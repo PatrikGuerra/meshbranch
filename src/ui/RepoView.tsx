@@ -12,6 +12,9 @@ import { FileTree, TypeBadge } from './FileTree';
 import { Icon } from './icons';
 import { ModelTree } from './ModelTree';
 import { PartPanel } from './PartPanel';
+import { MeasurePanel } from './MeasurePanel';
+import { MeasureTool, type MeasureState } from '../measure/tool';
+import type { Entity } from '../measure/types';
 import { useStoredFlag } from './useStoredFlag';
 import { Viewer } from './Viewer';
 
@@ -183,11 +186,30 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
     return () => { view.onPick = null; };
   }, [view, parts]);
 
+  // ----- Measure mode (docs/MEASURE.md) -----
+  const [measuring, setMeasuring] = useState(false);
+  const [mstate, setMstate] = useState<MeasureState | null>(null);
+  const tool = useRef<MeasureTool | null>(null);
+  useEffect(() => {
+    if (!measuring || !view || !parts) return;
+    const t = tool.current = new MeasureTool(view, s => setMstate({ ...s }));
+    t.dark = dark;
+    setMstate({ ...t.state });
+    return () => { t.dispose(); tool.current = null; setMstate(null); };
+  }, [measuring, view, parts]); // eslint-disable-line react-hooks/exhaustive-deps -- dark is applied below
+  useEffect(() => { if (tool.current) { tool.current.dark = dark; tool.current.redraw(); } }, [dark]);
+  const partName = (e: Entity) => parts?.byMesh.get(e.mesh)?.name;
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement).matches('input, textarea')) return;
       if (e.key.toLowerCase() === 'f' && !e.ctrlKey && !e.metaKey) view?.fit('fit');
-      if (e.key === 'Escape') setSelected(null);
+      if (e.key.toLowerCase() === 'm' && !e.ctrlKey && !e.metaKey && !e.altKey) setMeasuring(m => !m);
+      if (e.key === 'Escape') {
+        setSelected(null);
+        const t = tool.current;
+        if (t) { if (t.state.a || t.state.b) t.clear(); else setMeasuring(false); }
+      }
     };
     addEventListener('keydown', onKey);
     return () => removeEventListener('keydown', onKey);
@@ -237,6 +259,8 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
             <div className="toolbar" role="toolbar" aria-label="View">
               {(['fit', 'iso', 'top', 'front', 'right'] as View[]).map(v => <button key={v} className="tb" onClick={() => view?.fit(v)}>{v[0].toUpperCase() + v.slice(1)}</button>)}
               <span className="sep" />
+              <button className="tb" aria-pressed={measuring} disabled={!parts} onClick={() => setMeasuring(m => !m)} title="Measure distances (M)">Measure</button>
+              <span className="sep" />
               <button className="tb" aria-pressed={modes.edges} onClick={() => { view?.clearPartModes(); setModes(m => ({ ...m, edges: !m.edges })); }}>Edges</button>
               <button className="tb" aria-pressed={modes.wire} onClick={() => { view?.clearPartModes(); setModes(m => ({ ...m, wire: !m.wire })); }}>Wireframe</button>
               <button className="tb" aria-pressed={modes.grid} onClick={() => setModes(m => ({ ...m, grid: !m.grid }))}>Grid</button>
@@ -259,6 +283,7 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
             {file.status === 'error' && <div className="overlay"><div className="card"><h2>Could not open this file</h2><p>{file.message}</p><a className="btn" href={ghUrl} target="_blank" rel="noopener">View on GitHub</a></div></div>}
             {file.status === 'lfs' && <div className="overlay"><div className="card"><h2>Stored with Git LFS</h2><p>This file lives in Git Large File Storage. MeshBranch cannot open LFS files yet.</p><a className="btn" href={ghUrl} target="_blank" rel="noopener">Open on GitHub</a></div></div>}
             {file.status === 'big' && path && <div className="overlay"><div className="card"><h2>Large file: {mb(file.size)}</h2><p>Opening it may use a lot of memory and take a while.</p><button className="btn primary" onClick={() => setAllowBig(s => new Set(s).add(path))}>Open anyway</button></div></div>}
+            {mstate && <MeasurePanel state={mstate} partName={partName} onFocus={i => tool.current?.setFocus(i)} onClear={() => tool.current?.clear()} onClose={() => setMeasuring(false)} />}
           </Viewer>
         </section>
 
