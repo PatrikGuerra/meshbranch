@@ -97,6 +97,9 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
   const entry = ready && target ? ready.tree.entries.find(e => e.path === target) : undefined;
   const path = entry?.type === 'blob' ? target : '';
   const dir = entry?.type === 'tree' ? target : '';
+  useEffect(() => {
+    document.title = `${path ? `${path.split('/').pop()} · ` : ''}${owner}/${repo}${ready ? ` @ ${ready.ref}` : ''} · MeshBranch`;
+  }, [path, owner, repo, ready]);
 
   // ----- Branches (PLAN.md 6.3): list them, then compare up to MAX_COMPARES while the rate limit allows -----
   useEffect(() => {
@@ -268,7 +271,7 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
         {ready && <BranchMenu current={ready.ref} sha={ready.sha} defaultBranch={defaultBranch} branches={branches} checks={checks}
           onSwitch={b => switchTo(b)} onCheck={checkOne} onRefresh={refreshBranches} />}
         <div className="spacer" />
-        <button className="icon-btn" onClick={onToggleTheme} title="Toggle theme" aria-label="Toggle theme"><Icon name="moon" /></button>
+        <button className="icon-btn" onClick={onToggleTheme} title={dark ? 'Light theme' : 'Dark theme'} aria-label={dark ? 'Switch to light theme' : 'Switch to dark theme'}><Icon name={dark ? 'sun' : 'moon'} /></button>
         <button className="btn" onClick={copyLink}><Icon name="link" />Copy link</button>
       </header>
 
@@ -332,7 +335,7 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
               </div></div>
             )}
             {file.status === 'loading' && <div className="overlay dim"><div className="loader"><span className="spin" />{file.step}{file.progress !== undefined && <span className="pct">{Math.round(file.progress * 100)}%</span>}</div></div>}
-            {file.status === 'error' && <div className="overlay"><div className="card"><h2>Could not open this file</h2><p>{file.message}</p></div></div>}
+            {file.status === 'error' && <div className="overlay"><div className="card"><h2>Could not open this file</h2><p>{file.message}</p><a className="btn" href={ghUrl} target="_blank" rel="noopener">View on GitHub</a></div></div>}
             {file.status === 'lfs' && <div className="overlay"><div className="card"><h2>Stored with Git LFS</h2><p>This file lives in Git Large File Storage. MeshBranch cannot open LFS files yet.</p><a className="btn" href={ghUrl} target="_blank" rel="noopener">Open on GitHub</a></div></div>}
             {file.status === 'big' && path && <div className="overlay"><div className="card"><h2>Large file: {mb(file.size)}</h2><p>Opening it may use a lot of memory and take a while.</p><button className="btn primary" onClick={() => setAllowBig(s => new Set(s).add(path))}>Open anyway</button></div></div>}
           </Viewer>

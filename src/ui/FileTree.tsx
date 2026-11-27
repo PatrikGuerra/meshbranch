@@ -3,6 +3,7 @@ import type { TreeEntry } from '../github/client';
 import { FORMAT_BADGE, FORMATS, FORMAT_LABEL, type Format } from '../importers/formats';
 import { allDirs, buildTree, countFiles, type DirNode } from '../tree/buildTree';
 import { Icon } from './icons';
+import { treeKeys } from './treeKeys';
 
 const AUTO_EXPAND_LIMIT = 300; // small repos open fully; big ones start collapsed
 
@@ -67,7 +68,7 @@ export function FileTree({ entries, selected, reveal, newer, onOpen, onCollapse 
         {FORMATS.map(f => <button key={f} className="chip" aria-pressed={formats.has(f)} onClick={() => toggleFormat(f)}>{FORMAT_LABEL[f]}</button>)}
         <label className="switch push"><input type="checkbox" checked={only3d} onChange={e => setOnly3d(e.target.checked)} />3D only</label>
       </div>
-      <div className="tree" role="tree">{list.length ? list : <div className="tree-empty">No matching files.</div>}</div>
+      <div className="tree" role="tree" aria-label="Files" onKeyDown={treeKeys}>{list.length ? list : <div className="tree-empty">No matching files.</div>}</div>
       <div className="left-foot">{entries.filter(e => e.type === 'blob').length.toLocaleString('en-US')} files · {models.toLocaleString('en-US')} models</div>
     </>
   );

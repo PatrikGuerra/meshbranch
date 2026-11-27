@@ -26,6 +26,7 @@ function cubeOptions(el: HTMLElement, dark: boolean): GizmoOptions {
   const f = (text: string) => ({ label: text, color: face, labelColor: label, hover: { color: accent, labelColor: dark ? '#062824' : '#ffffff' } });
   return {
     type: 'cube', id: 'viewcube', container: el, placement: 'top-right', size: 96, offset: { top: 12, right: 12 },
+    animated: !matchMedia('(prefers-reduced-motion: reduce)').matches,
     font: { family: 'Inter, "Segoe UI", system-ui, sans-serif', weight: 700 },
     background: { color: dark ? '#2e3442' : '#aab2bd', hover: { color: accent } },
     edges: { color: dark ? '#2e3442' : '#aab2bd', hover: { color: accent } },

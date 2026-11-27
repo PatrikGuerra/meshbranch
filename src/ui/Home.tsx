@@ -1,13 +1,17 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { parseRepoInput, type RepoTarget } from '../app/route';
 import { Icon } from './icons';
 
-// Public repositories with STEP, STL or OBJ files, used as one-click examples.
-const EXAMPLES = ['kovacsv/Online3DViewer', 'prusa3d/Original-Prusa-i3'];
+// One-click examples: links straight to a STEP assembly and to a repo with many branches.
+const EXAMPLES = [
+  { label: 'STEP assembly', repo: 'kovacsv/Online3DViewer', link: 'https://github.com/kovacsv/Online3DViewer/blob/master/website/assets/models/as1_pe_203.stp' },
+  { label: '9 branches', repo: 'prusa3d/Original-Prusa-i3', link: 'https://github.com/prusa3d/Original-Prusa-i3/tree/MK3S/Printed-Parts/STEP' },
+];
 
-export function Home({ onOpen, onToggleTheme }: { onOpen: (r: RepoTarget) => void; onToggleTheme: () => void }) {
+export function Home({ onOpen, dark, onToggleTheme }: { onOpen: (r: RepoTarget) => void; dark: boolean; onToggleTheme: () => void }) {
   const [value, setValue] = useState('');
   const [error, setError] = useState('');
+  useEffect(() => { document.title = 'MeshBranch · 3D viewer for GitHub repositories'; }, []);
   const open = (input: string) => {
     const r = parseRepoInput(input);
     if (r) onOpen(r); else setError('Enter a repository as owner/repo, or paste a GitHub link to a repo, branch, folder or file.');
@@ -18,7 +22,7 @@ export function Home({ onOpen, onToggleTheme }: { onOpen: (r: RepoTarget) => voi
     <div className="home">
       <div className="home-top">
         <div className="brand plain"><Icon name="logo" />MeshBranch</div>
-        <button className="icon-btn" onClick={onToggleTheme} title="Toggle theme" aria-label="Toggle theme"><Icon name="moon" /></button>
+        <button className="icon-btn" onClick={onToggleTheme} title={dark ? 'Light theme' : 'Dark theme'} aria-label={dark ? 'Switch to light theme' : 'Switch to dark theme'}><Icon name={dark ? 'sun' : 'moon'} /></button>
       </div>
       <main className="home-main">
         <h1>Browse the 3D models in any GitHub repository</h1>
@@ -30,11 +34,11 @@ export function Home({ onOpen, onToggleTheme }: { onOpen: (r: RepoTarget) => voi
         <div className="home-err" role="alert">{error}</div>
         <div className="examples">
           <span>Try:</span>
-          {EXAMPLES.map(r => <button key={r} className="ex" onClick={() => open(r)}>{r}</button>)}
+          {EXAMPLES.map(x => <button key={x.repo} className="ex" onClick={() => open(x.link)} title={x.link}><span className="ex-tag">{x.label}</span>{x.repo}</button>)}
         </div>
         <div className="features">
-          <div className="feature"><Icon name="parts" /><h3>CAD and print files</h3><p>STEP assemblies, STL prints and OBJ meshes, with edges, wireframe and standard views.</p></div>
-          <div className="feature"><Icon name="branch" /><h3>Any branch or commit</h3><p>Every view has a link that points to the exact commit and file. Share it in a PR or an issue.</p></div>
+          <div className="feature"><Icon name="parts" /><h3>Parts you can toggle</h3><p>See the assembly tree of a STEP file. Hide, isolate, recolor or make any part see-through.</p></div>
+          <div className="feature"><Icon name="branch" /><h3>Branch aware</h3><p>Switch branches and get told when one has newer 3D files than yours. Every view has its own link.</p></div>
           <div className="feature"><Icon name="lock" /><h3>No sign-in, no upload</h3><p>Runs in your browser. Files come straight from GitHub and never leave your machine.</p></div>
         </div>
       </main>

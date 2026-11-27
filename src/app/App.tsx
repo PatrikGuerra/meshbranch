@@ -14,6 +14,6 @@ export function App() {
   }), []);
   const home = useCallback(() => navigate({ kind: 'home' }), [navigate]);
 
-  if (route.kind === 'home') return <Home onOpen={r => navigate({ kind: 'repo', ...r })} onToggleTheme={toggleTheme} />;
+  if (route.kind === 'home') return <Home onOpen={r => navigate({ kind: 'repo', ...r })} dark={dark} onToggleTheme={toggleTheme} />;
   return <RepoView key={`${route.owner}/${route.repo}`} route={route} navigate={navigate} dark={dark} onToggleTheme={toggleTheme} onHome={home} />;
 }

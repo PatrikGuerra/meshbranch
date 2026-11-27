@@ -9,6 +9,10 @@ MeshBranch é um site que mostra os modelos 3D de qualquer repositório público
 1. Abra o site.
 2. Digite `owner/repo` ou cole a URL do repositório no GitHub.
 3. Escolha um arquivo 3D na árvore da esquerda.
+4. No painel da direita, ligue, desligue, isole ou pinte cada peça.
+5. Troque de branch no seletor do topo. Um aviso mostra quando outra branch tem arquivos 3D mais novos.
+
+Atalhos: `F` ajusta a câmera, `Esc` tira a seleção. Nas árvores, as setas, `Home` e `End` andam entre as linhas, e `Espaço` mostra ou esconde a peça.
 
 Cada tela tem um link próprio, fixo no commit e no arquivo. O botão **Copy link** copia esse link.
 

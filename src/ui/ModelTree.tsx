@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { matchParts, visibility, type PartNode, type Parts } from '../viewer/parts';
 import { Icon } from './icons';
+import { treeKeys } from './treeKeys';
 
 const AUTO_EXPAND_LIMIT = 200; // small models open fully; big ones show only the first level
 
@@ -51,7 +52,7 @@ export function ModelTree({ parts, selected, onSelect, onToggle, onIsolate }: {
   return (
     <>
       <div className="search"><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Filter parts…" aria-label="Filter parts" /></div>
-      <div className="tree" role="tree" aria-label="Parts">{list.length ? list : <div className="tree-empty">No matching parts.</div>}</div>
+      <div className="tree" role="tree" aria-label="Parts" onKeyDown={treeKeys}>{list.length ? list : <div className="tree-empty">No matching parts.</div>}</div>
     </>
   );
 }
