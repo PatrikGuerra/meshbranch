@@ -5,7 +5,7 @@ import { download, getDefaultBranch, getTree, GitHubError, listBranches, onRateL
 import { getBlob, putBlob } from '../github/blobCache';
 import { rateNotice } from '../github/limit';
 import { FORMAT_LABEL, formatOf, isLfsPointer } from '../importers/formats';
-import { loadModel } from '../importers/load';
+import { loadModel, stepReading, stopStepReader } from '../importers/load';
 import { buildParts, visibility, type PartNode, type Parts } from '../viewer/parts';
 import type { ModelStats, SceneView, View } from '../viewer/scene';
 import { FileTree, TypeBadge } from './FileTree';
@@ -18,7 +18,7 @@ import { Viewer } from './Viewer';
 type RepoRoute = Extract<Route, { kind: 'repo' }>;
 type RepoState = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; ref: string; sha: string; tree: Tree; isDefault: boolean };
 type FileState =
-  | { status: 'none' } | { status: 'loading'; step: string; progress?: number } | { status: 'error'; message: string }
+  | { status: 'none' } | { status: 'loading'; step: string; progress?: number; since?: number } | { status: 'error'; message: string }
   | { status: 'big'; size: number } | { status: 'lfs' } | { status: 'ready'; stats: ModelStats; parts: Parts };
 
 const BIG_FILE = 50 * 1024 * 1024; // ask before opening files larger than this
@@ -124,7 +124,7 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
         if (!isLfsPointer(buf)) await putBlob(entry.sha, buf);
       }
       if (isLfsPointer(buf)) { view.setModel(null); setFile({ status: 'lfs' }); return; }
-      setFile({ status: 'loading', step: format === 'step' ? 'Reading STEP with OpenCascade…' : `Reading ${FORMAT_LABEL[format]}…` });
+      setFile({ status: 'loading', step: format === 'step' ? 'Reading STEP with OpenCascade…' : `Reading ${FORMAT_LABEL[format]}…`, since: format === 'step' ? Date.now() : undefined });
       const obj = await loadModel(format, buf, {
         name,
         resourceUrl: rawUrl(owner, repo, state.sha, dir),
@@ -141,7 +141,6 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
           return new TextDecoder().decode(b);
         },
       });
-      // shortcut: a STEP read still running in the worker is not stopped, only ignored; add worker cancel if big files make this hurt.
       if (ac.signal.aborted) return;
       view.setModel(obj);
       setModes(m => ({ ...m, edges: view.edges }));
@@ -152,7 +151,7 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
       view.setModel(null);
       setFile({ status: 'error', message: e.message || 'This file could not be opened.' });
     });
-    return () => ac.abort();
+    return () => { ac.abort(); if (format === 'step' && stepReading()) stopStepReader(); };
   }, [state, view, target, owner, repo, allowBig]);
 
   useEffect(() => {
@@ -255,7 +254,7 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
                 </div>}
               </div></div>
             )}
-            {file.status === 'loading' && <div className="overlay dim"><div className="loader"><span className="spin" />{file.step}{file.progress !== undefined && <span className="pct">{Math.round(file.progress * 100)}%</span>}</div></div>}
+            {file.status === 'loading' && <div className="overlay dim"><div className="loader"><span className="spin" />{file.step}{file.progress !== undefined && <span className="pct">{Math.round(file.progress * 100)}%</span>}{file.since && <><Elapsed since={file.since} /><button className="btn small" onClick={() => stopStepReader('Reading was stopped. Big or complex STEP files can take several minutes.')}>Cancel</button></>}</div></div>}
             {file.status === 'error' && <div className="overlay"><div className="card"><h2>Could not open this file</h2><p>{file.message}</p><a className="btn" href={ghUrl} target="_blank" rel="noopener">View on GitHub</a></div></div>}
             {file.status === 'lfs' && <div className="overlay"><div className="card"><h2>Stored with Git LFS</h2><p>This file lives in Git Large File Storage. MeshBranch cannot open LFS files yet.</p><a className="btn" href={ghUrl} target="_blank" rel="noopener">Open on GitHub</a></div></div>}
             {file.status === 'big' && path && <div className="overlay"><div className="card"><h2>Large file: {mb(file.size)}</h2><p>Opening it may use a lot of memory and take a while.</p><button className="btn primary" onClick={() => setAllowBig(s => new Set(s).add(path))}>Open anyway</button></div></div>}
@@ -294,4 +293,11 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
       {toast && <div className="toast" role="status">{toast}</div>}
     </div>
   );
+}
+
+// Seconds since a long step started, so a slow STEP read still looks alive.
+function Elapsed({ since }: { since: number }) {
+  const [, tick] = useReducer((n: number) => n + 1, 0);
+  useEffect(() => { const t = setInterval(tick, 1000); return () => clearInterval(t); }, []);
+  return <span className="pct">{Math.floor((Date.now() - since) / 1000)} s</span>;
 }

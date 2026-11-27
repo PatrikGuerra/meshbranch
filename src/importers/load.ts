@@ -23,12 +23,20 @@ function stepWorker(): Worker {
     pending.delete(e.data.id);
     if (e.data.ok) p.resolve(e.data); else p.reject(new Error(e.data.error));
   };
-  worker.onerror = e => {
-    pending.forEach(p => p.reject(new Error(e.message || 'The STEP reader stopped unexpectedly.')));
-    pending.clear(); worker?.terminate(); worker = null;
-  };
+  worker.onerror = e => { e.preventDefault(); stopStepReader(e.message || 'The STEP reader stopped unexpectedly.'); };
+  worker.onmessageerror = () => stopStepReader('The STEP reader sent back data the page could not read.');
   return worker;
 }
+
+// Ends any STEP read still running (cancel, or a new file opened) and frees its memory.
+// The next read starts a fresh worker, which loads the WASM again (about 1 s).
+export function stopStepReader(reason = 'Reading was stopped.') {
+  if (!worker) return;
+  worker.terminate(); worker = null;
+  pending.forEach(p => p.reject(new Error(reason)));
+  pending.clear();
+}
+export const stepReading = () => pending.size > 0;
 
 async function readStep(buffer: ArrayBuffer): Promise<THREE.Object3D> {
   const id = ++seq;
