@@ -15,6 +15,17 @@ const paths = {
   part: <rect x="4" y="4" width="16" height="16" rx="2" />,
   panel: <><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M9 4v16" /></>,
   x: <path d="M6 6l12 12M18 6L6 18" />,
+  // Viewer toolbar (mock/toolbar.html)
+  fit: <><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" /><rect x="9" y="9" width="6" height="6" rx="1" /></>,
+  viewIso: <><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z" /><path d="M4 7.5l8 4.5 8-4.5M12 12v9" /></>,
+  viewTop: <><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z" opacity=".35" /><path d="M4 7.5L12 3l8 4.5L12 12z" fill="currentColor" fillOpacity=".25" /></>,
+  viewFront: <><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z" opacity=".35" /><path d="M4 7.5l8 4.5v9l-8-4.5z" fill="currentColor" fillOpacity=".25" /></>,
+  viewRight: <><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z" opacity=".35" /><path d="M20 7.5L12 12v9l8-4.5z" fill="currentColor" fillOpacity=".25" /></>,
+  solid: <path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z" fill="currentColor" fillOpacity=".35" stroke="none" />,
+  edges: <><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z" fill="currentColor" fillOpacity=".25" /><path d="M4 7.5l8 4.5 8-4.5M12 12v9" /></>,
+  wire: <><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z" /><path d="M4 7.5l8 4.5 8-4.5M12 12v9M4 16.5l8-4.5 8 4.5M12 3v9" strokeDasharray="2 2" /></>,
+  grid: <><path d="M3 9h18M3 15h18M9 3v18M15 3v18" /><rect x="3" y="3" width="18" height="18" rx="2" /></>,
+  ruler: <><path d="M3 17L17 3l4 4L7 21z" /><path d="M7 13l2 2M10 10l2 2M13 7l2 2" /></>,
 };
 export type IconName = keyof typeof paths;
 
