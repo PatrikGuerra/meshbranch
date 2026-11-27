@@ -83,7 +83,7 @@ Biblioteca para a BVH: [three-mesh-bvh](https://github.com/gkjohnson/three-mesh-
 | Parte | Comportamento |
 |---|---|
 | Botão "Measure" | na barra de vistas; tecla `M`. Liga e desliga o modo de medida |
-| Passar o mouse | destaca a entidade sob o cursor: vértice (ponto), aresta (linha grossa) ou face (cor). Prioridade: vértice, depois aresta, depois face, com uma margem de 8 px na tela |
+| Passar o mouse | destaca a entidade sob o cursor, com snap em vértices e arestas (seção 5.1) |
 | Clique | escolhe a entidade. O segundo clique escolhe a segunda. Um terceiro clique recomeça do zero |
 | `Shift` + clique | troca só a segunda entidade |
 | Clique de novo numa entidade escolhida | tira ela da seleção |
@@ -112,6 +112,39 @@ O painel tem cerca de 320 px de largura e fica 12 px acima da dica "Drag to orbi
 
 O modo de medida desliga a seleção de peças (F2) enquanto está ligado, para um clique não fazer duas coisas.
 
+### 5.1 Snap (grudar no vértice ou na aresta)
+
+Vértices e arestas são pequenos na tela. Sem snap, o usuário quase nunca acerta o clique. Por isso o cursor "gruda" no vértice ou na aresta mais perto, dentro de um raio em pixels.
+
+| Alvo | Raio de snap | Destaque ao passar o mouse | Destaque escolhido |
+|---|---|---|---|
+| Vértice | 10 px | anel de 10 px na cor de destaque, sempre do mesmo tamanho na tela | ponto cheio, com a letra A ou B |
+| Ponto do meio de aresta reta | 8 px | triângulo pequeno | igual, cheio |
+| Centro de aresta circular | 8 px | cruz no centro do círculo, com o círculo em destaque | igual, cheio |
+| Aresta | 6 px | a aresta inteira em linha grossa (3 px na tela) | linha grossa cheia, com a letra A ou B |
+| Face | sob o cursor | a face inteira com a cor de seleção, clara | a face inteira com a cor de seleção, forte |
+
+Prioridade, quando mais de um alvo está no raio: vértice, depois ponto do meio e centro, depois aresta, depois face. Isso é igual ao Onshape.
+
+Cores: a seleção A usa a cor de destaque do app (verde-azulado). A seleção B usa laranja. O hover é a mesma cor, mais clara. As faces recebem uma camada por cima da cor original (com `polygonOffset`, para não piscar), então a cor da peça volta sozinha ao tirar a seleção.
+
+Como funciona:
+
+1. A cada movimento do mouse (no máximo 1 vez por quadro), o app lança um raio do cursor e acha a face sob ele (com a BVH da seção 4).
+2. Ele projeta na tela os vértices e as arestas **da peça atingida e das vizinhas**. A projeção só é refeita quando a câmera muda.
+3. Ele mede, em pixels, a distância do cursor a cada vértice e a cada segmento de aresta. O mais perto dentro do raio vence, pela prioridade.
+4. **Oclusão:** um vértice ou uma aresta escondidos atrás de outra face não contam. O app lança um raio até o ponto candidato e só aceita se nada estiver na frente dele (tolerância de 0,1% do tamanho do modelo).
+5. Sem nada no raio, a face sob o cursor fica em destaque.
+
+Atalhos:
+
+- Segurar `Alt` desliga o snap: o clique escolhe só a face.
+- Em tela de toque, os raios dobram de tamanho (20 px para vértices).
+
+Um rótulo pequeno junto do cursor diz o que vai ser escolhido: "Vertex", "Midpoint", "Center", "Edge · 12.0 mm" ou "Face (plane)".
+
+Para STL e OBJ (fase M5), o snap usa os vértices e as arestas estimados da seção 2. Antes disso, nesses formatos, o snap fica só nos cantos dos triângulos.
+
 ## 6. Onde fica o código
 
 ```
@@ -120,7 +153,7 @@ src/measure/
 ├── classify.ts       # reta, círculo, plano, cilindro
 ├── distance.ts       # mínima, máxima, centro, ângulo, perpendicular
 ├── measure.worker.ts # roda topology e distance fora da tela
-├── picker.ts         # entidade sob o mouse, com a margem em pixels
+├── picker.ts         # entidade sob o mouse: snap, prioridade e oclusão (seção 5.1)
 └── overlay.ts        # linhas e rótulos na cena (CSS2DRenderer do three.js)
 src/ui/MeasurePanel.tsx
 ```
@@ -131,8 +164,8 @@ A topologia é calculada uma vez por arquivo, só quando o modo de medida é lig
 
 | Fase | Entrega | Pronto quando |
 |---|---|---|
-| M1 | Ponto a ponto | Modo Measure, escolha de vértices, distância e ΔX/ΔY/ΔZ, linha na cena |
-| M2 | Topologia do STEP | Faces vindas de `brep_faces`, arestas e vértices calculados, destaque ao passar o mouse |
+| M1 | Ponto a ponto | Modo Measure, snap nos cantos dos triângulos, distância e ΔX/ΔY/ΔZ, linha na cena |
+| M2 | Topologia do STEP | Faces vindas de `brep_faces`, arestas e vértices calculados, snap completo da seção 5.1 (vértice, meio, centro, aresta, face) |
 | M3 | Uma entidade | Comprimento de aresta, raio e diâmetro de círculos, área de face, tipo de face |
 | M4 | Duas entidades | Mínima, máxima e centro para todos os pares da seção 1, com ângulo e distância perpendicular |
 | M5 | STL e OBJ | Faces estimadas por direção dos triângulos, para medir também malhas |
