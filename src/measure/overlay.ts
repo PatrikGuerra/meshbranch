@@ -80,7 +80,8 @@ export function drawRows(rows: Row[], focus: number | null, dash: number, ink: n
     line.renderOrder = 11;
     group.add(line);
     group.add(marker(r.from, ink, true), marker(r.to, ink, true));
-    if (on) group.add(label(`${r.approx ? '≈ ' : ''}${r.value}`, r.from.clone().add(r.to).multiplyScalar(0.5)));
+    // One value label at a time (the first row, or the row under the mouse) so labels never overlap.
+    if (focus === i || (focus === null && i === rows.findIndex(x => x.from && x.to))) group.add(label(`${r.approx ? '≈ ' : ''}${r.value}`, r.from.clone().add(r.to).multiplyScalar(0.5)));
   });
   return group;
 }
