@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { View } from '../viewer/scene';
+import type { Projection, View } from '../viewer/scene';
 import { Icon, type IconName } from './icons';
 
 export type Display = 'solid' | 'edges' | 'wire';
@@ -28,13 +28,17 @@ function Btn({ icon, name, keyHint, pressed, disabled, onClick, children, classN
   );
 }
 
-// Viewer toolbar (mock/toolbar.html, version A): camera, display, scene and tools groups.
-export function ViewToolbar({ disabled, measuring, display, grid, onView, onMeasure, onDisplay, onGrid }: {
-  disabled: boolean; measuring: boolean; display: Display; grid: boolean;
-  onView: (v: View) => void; onMeasure: () => void; onDisplay: (d: Display) => void; onGrid: () => void;
+// Viewer toolbar (mock/toolbar.html, version A): projection, camera, display, scene and tools groups.
+export function ViewToolbar({ disabled, measuring, display, grid, projection, onView, onMeasure, onDisplay, onGrid, onProjection }: {
+  disabled: boolean; measuring: boolean; display: Display; grid: boolean; projection: Projection;
+  onView: (v: View) => void; onMeasure: () => void; onDisplay: (d: Display) => void; onGrid: () => void; onProjection: (p: Projection) => void;
 }) {
   return (
     <div className="tools" role="toolbar" aria-label="View">
+      <div className="group" role="radiogroup" aria-label="Projection">
+        <Btn icon="persp" name="Perspective" keyHint="5" pressed={projection === 'persp'} onClick={() => onProjection('persp')} />
+        <Btn icon="ortho" name="Orthographic" keyHint="5" pressed={projection === 'ortho'} onClick={() => onProjection('ortho')} />
+      </div>
       <div className="group" role="group" aria-label="Camera">
         {VIEWS.map(x => <Btn key={x.v} icon={x.icon} name={x.name} keyHint={x.key} onClick={() => onView(x.v)} />)}
       </div>

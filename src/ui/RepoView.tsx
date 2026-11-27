@@ -7,7 +7,7 @@ import { rateNotice } from '../github/limit';
 import { FORMAT_LABEL, formatOf, isLfsPointer } from '../importers/formats';
 import { loadModel, stepReading, stopStepReader } from '../importers/load';
 import { buildParts, visibility, type PartNode, type Parts } from '../viewer/parts';
-import type { ModelStats, SceneView, View } from '../viewer/scene';
+import type { ModelStats, Projection, SceneView, View } from '../viewer/scene';
 import { FileTree, TypeBadge } from './FileTree';
 import { Icon } from './icons';
 import { ModelTree } from './ModelTree';
@@ -189,6 +189,10 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
 
   // Solid, solid with edges or wireframe for the whole model; drops the per-part view modes.
   const setDisplay = (d: Display) => { view?.clearPartModes(); setModes(m => ({ ...m, edges: d === 'edges', wire: d === 'wire' })); };
+  // Perspective or orthographic camera; kept across files in this browser.
+  const [projection, setProjection] = useState<Projection>(() => localStorage.getItem('meshbranch-projection') === 'ortho' ? 'ortho' : 'persp');
+  const setProj = (p: Projection) => { setProjection(p); try { localStorage.setItem('meshbranch-projection', p); } catch { /* this visit only */ } };
+  useEffect(() => { view?.setProjection(projection); }, [view, projection]);
 
   // ----- Measure mode (docs/MEASURE.md) -----
   const [measuring, setMeasuring] = useState(false);
@@ -214,6 +218,7 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
       if (k === 'e') setDisplay('edges');
       if (k === 'w') setDisplay('wire');
       if (k === 'g') setModes(m => ({ ...m, grid: !m.grid }));
+      if (e.key === '5') setProj(view?.projection === 'ortho' ? 'persp' : 'ortho');
       const v = ({ '0': 'iso', '7': 'top', '1': 'front', '3': 'right' } as Record<string, View>)[e.key];
       if (v) view?.fit(v);
       if (e.key === 'Escape') {
@@ -268,6 +273,7 @@ export function RepoView({ route, navigate, dark, onToggleTheme, onHome }: {
               </> : <>{dir && <><Icon name="folder" />{dir.split('/').map((s, i) => <span key={i} className="seg">{s} /</span>)}</>}<span className="seg">No file selected</span></>}
             </div>
             <ViewToolbar disabled={!parts} measuring={measuring} display={modes.wire ? 'wire' : modes.edges ? 'edges' : 'solid'} grid={modes.grid}
+              projection={projection} onProjection={setProj}
               onView={v => view?.fit(v)} onMeasure={() => setMeasuring(m => !m)} onDisplay={setDisplay} onGrid={() => setModes(m => ({ ...m, grid: !m.grid }))} />
           </div>
           <Viewer dark={dark} onView={onView}>

@@ -16,6 +16,8 @@ const paths = {
   panel: <><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M9 4v16" /></>,
   x: <path d="M6 6l12 12M18 6L6 18" />,
   // Viewer toolbar (mock/toolbar.html)
+  persp: <><path d="M3 7l18-3v16L3 17z" /><path d="M3 12h18M9 6v12M15 5v14" opacity=".45" /></>,
+  ortho: <><rect x="3" y="5" width="18" height="14" rx="1" /><path d="M3 12h18M9 5v14M15 5v14" opacity=".45" /></>,
   fit: <><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" /><rect x="9" y="9" width="6" height="6" rx="1" /></>,
   viewIso: <><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z" /><path d="M4 7.5l8 4.5 8-4.5M12 12v9" /></>,
   viewTop: <><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z" opacity=".35" /><path d="M4 7.5L12 3l8 4.5L12 12z" fill="currentColor" fillOpacity=".25" /></>,
