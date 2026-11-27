@@ -4,6 +4,7 @@ declare module 'occt-import-js' {
     color?: [number, number, number];
     attributes: { position: { array: ArrayLike<number> }; normal?: { array: ArrayLike<number> } };
     index: { array: ArrayLike<number> };
+    brep_faces?: { first: number; last: number }[];
   };
   export type OcctNode = { name: string; meshes: number[]; children: OcctNode[] };
   type OcctResult = { success: boolean; root: OcctNode; meshes: OcctMesh[] };

@@ -2,7 +2,7 @@ import occtimportjs from 'occt-import-js';
 import wasmUrl from 'occt-import-js/dist/occt-import-js.wasm?url';
 import type { OcctNode } from 'occt-import-js';
 
-export type StepMesh = { name: string; color: [number, number, number] | null; position: Float32Array; normal: Float32Array | null; index: Uint32Array };
+export type StepMesh = { name: string; color: [number, number, number] | null; position: Float32Array; normal: Float32Array | null; index: Uint32Array; faces: Int32Array | null };
 export type StepReply = { id: number; ok: true; root: OcctNode; meshes: StepMesh[] } | { id: number; ok: false; error: string };
 
 const ctx = self as unknown as { postMessage(msg: StepReply, transfer?: Transferable[]): void; onmessage: ((e: MessageEvent) => void) | null };
@@ -20,8 +20,10 @@ ctx.onmessage = async (e: MessageEvent<{ id: number; buffer: ArrayBuffer }>) => 
       position: Float32Array.from(m.attributes.position.array),
       normal: m.attributes.normal ? Float32Array.from(m.attributes.normal.array) : null,
       index: Uint32Array.from(m.index.array),
+      // [first, last] triangle of each original B-rep face, for the measure tool.
+      faces: m.brep_faces ? Int32Array.from(m.brep_faces.flatMap(f => [f.first, f.last])) : null,
     }));
-    const transfer = meshes.flatMap(m => [m.position.buffer, m.index.buffer, ...(m.normal ? [m.normal.buffer] : [])]);
+    const transfer = meshes.flatMap(m => [m.position.buffer, m.index.buffer, ...(m.normal ? [m.normal.buffer] : []), ...(m.faces ? [m.faces.buffer] : [])]);
     ctx.postMessage({ id, ok: true, root: res.root, meshes }, transfer);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

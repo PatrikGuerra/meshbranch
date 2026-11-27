@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
 import { ViewportGizmo, type GizmoOptions } from 'three-viewport-gizmo';
 
 // Z-up for everything, like CAD tools. The view cube reads this global to orient its clicks and drags;
@@ -8,6 +9,7 @@ THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
 
 export type View = 'fit' | 'iso' | 'top' | 'front' | 'right';
 export type ViewMode = 'solid' | 'edges' | 'wire';
+export type Projection = 'persp' | 'ortho';
 export type ModelStats = { triangles: number; size: THREE.Vector3 };
 type Mat = THREE.MeshStandardMaterial | THREE.MeshPhongMaterial;
 type Base = { color: THREE.Color; opacity: number; transparent: boolean; vertexColors: boolean };
@@ -19,6 +21,7 @@ const DIRS: Record<Exclude<View, 'fit'>, [number, number, number]> = {
   iso: [1, -1, 0.8], top: [0, -0.001, 1], front: [0, -1, 0], right: [1, 0, 0],
 };
 const mats = (m: THREE.Mesh) => [m.material].flat() as Mat[];
+const isShown = (o: THREE.Object3D | null): boolean => !o || (o.visible && isShown(o.parent));
 
 // View cube. The library names faces for a Y-up world; this scene is Z-up, so the labels follow the real axes.
 function cubeOptions(el: HTMLElement, dark: boolean): GizmoOptions {
@@ -38,7 +41,11 @@ function cubeOptions(el: HTMLElement, dark: boolean): GizmoOptions {
 export class SceneView {
   readonly renderer: THREE.WebGLRenderer;
   private scene = new THREE.Scene();
-  private camera = new THREE.PerspectiveCamera(35, 1, 0.1, 1e6);
+  private persp = new THREE.PerspectiveCamera(35, 1, 0.1, 1e6);
+  private ortho = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 1e6);
+  private camera: THREE.PerspectiveCamera | THREE.OrthographicCamera = this.persp;
+  private aspect = 1;
+  private orthoHalf = 1;
   private controls: OrbitControls;
   private grid: THREE.GridHelper | null = null;
   private edgeMat = new THREE.LineBasicMaterial({ transparent: true });
@@ -59,7 +66,8 @@ export class SceneView {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); // throws without WebGL
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     el.prepend(this.renderer.domElement);
-    this.camera.up.set(0, 0, 1); // Z-up, like CAD tools
+    this.persp.up.set(0, 0, 1); // Z-up, like CAD tools
+    this.ortho.up.set(0, 0, 1);
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
     const hemi = new THREE.HemisphereLight(0xffffff, 0x8a90a0, 1.7);
@@ -86,15 +94,29 @@ export class SceneView {
     const down = { x: 0, y: 0 };
     canvas.addEventListener('pointerdown', e => { down.x = e.clientX; down.y = e.clientY; });
     canvas.addEventListener('pointerup', e => {
-      if (e.button === 0 && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 4) this.onPick?.(this.pick(e), false);
+      if (e.button !== 0 || Math.hypot(e.clientX - down.x, e.clientY - down.y) >= 4) return;
+      if (this.tool) this.tool.click(e); else this.onPick?.(this.pick(e), false);
     });
-    canvas.addEventListener('dblclick', e => this.onPick?.(this.pick(e), true));
+    canvas.addEventListener('dblclick', e => { if (!this.tool) this.onPick?.(this.pick(e), true); });
+    // Hover runs at most once per frame.
+    let move: PointerEvent | null = null;
+    canvas.addEventListener('pointermove', e => {
+      if (!this.tool || e.buttons) return;
+      if (!move) requestAnimationFrame(() => { if (move && this.tool) this.tool.hover(move); move = null; });
+      move = e;
+    });
+    canvas.addEventListener('pointerleave', () => this.tool?.hover(null));
+    this.scene.add(this.overlay);
+    this.labels.domElement.className = 'labels';
+    el.appendChild(this.labels.domElement);
+    this.controls.addEventListener('change', () => this.viewListeners.forEach(f => f()));
 
     const loop = () => {
       this.raf = requestAnimationFrame(loop);
       // Render only when something changed, so an idle viewer costs nothing.
       if (this.controls.update() || this.dirty) {
         this.renderer.render(this.scene, this.camera);
+        this.labels.render(this.scene, this.camera);
         this.gizmo.cameraUpdate().render(); // keep the cube turned like the camera, even after fit()
         this.dirty = false;
       }
@@ -102,12 +124,79 @@ export class SceneView {
     loop();
   }
 
+  // ----- Hooks for the measure tool (src/measure) -----
+  readonly overlay = new THREE.Group(); // drawn on top of the model, never picked
+  private labels = new CSS2DRenderer();
+  private viewListeners = new Set<() => void>();
+  private tool: { click(e: MouseEvent): void; hover(e: MouseEvent | null): void } | null = null;
+  setTool(tool: typeof this.tool) { this.tool = tool; this.renderer.domElement.style.cursor = tool ? 'crosshair' : ''; }
+  onViewChange(f: () => void): () => void { this.viewListeners.add(f); return () => { this.viewListeners.delete(f); }; }
+  get cam(): THREE.Camera { return this.camera; }
+  get projection(): Projection { return this.camera === this.ortho ? 'ortho' : 'persp'; }
+
+  // Same view, other projection. The orthographic frustum matches what the perspective camera shows at the target.
+  setProjection(p: Projection) {
+    if (p === this.projection) return;
+    const from = this.camera, to = p === 'ortho' ? this.ortho : this.persp;
+    const tanHalf = Math.tan(THREE.MathUtils.degToRad(this.persp.fov / 2));
+    const dir = from.position.clone().sub(this.controls.target).normalize();
+    to.quaternion.copy(from.quaternion);
+    to.near = from.near; to.far = from.far;
+    if (to === this.ortho) {
+      to.position.copy(from.position);
+      this.ortho.zoom = 1;
+      this.setOrthoHalf(from.position.distanceTo(this.controls.target) * tanHalf);
+    } else {
+      // Zooming an orthographic camera changes its zoom, not its distance: turn that into distance.
+      const d = this.orthoHalf / this.ortho.zoom / tanHalf;
+      to.position.copy(this.controls.target).addScaledVector(dir, d);
+      to.updateProjectionMatrix();
+    }
+    this.camera = to;
+    this.controls.object = to;
+    this.gizmo.camera = to;
+    this.controls.update();
+    this.gizmo.update();
+    this.dirty = true;
+  }
+  private setOrthoHalf(h: number) {
+    this.orthoHalf = h;
+    Object.assign(this.ortho, { top: h, bottom: -h, left: -h * this.aspect, right: h * this.aspect });
+    this.ortho.updateProjectionMatrix();
+  }
+  get canvas(): HTMLCanvasElement { return this.renderer.domElement; }
+  modelMeshes(): readonly THREE.Mesh[] { return this.meshes; }
+  modelDiagonal(): number { return this.box.isEmpty() ? 1 : this.box.getSize(new THREE.Vector3()).length(); }
+  // Hits on visible meshes under a pointer, nearest first.
+  raycastAt(e: { clientX: number; clientY: number }): THREE.Intersection<THREE.Mesh>[] {
+    const r = this.canvas.getBoundingClientRect();
+    this.ray.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), this.camera);
+    return this.ray.intersectObjects(this.meshes.filter(m => isShown(m)), false) as THREE.Intersection<THREE.Mesh>[];
+  }
+  // A world point in canvas pixels (z > 1 means behind the camera).
+  toScreen(p: THREE.Vector3): { x: number; y: number; z: number } {
+    const v = p.clone().project(this.camera), r = this.canvas.getBoundingClientRect();
+    return { x: (v.x + 1) / 2 * r.width, y: (1 - v.y) / 2 * r.height, z: v.z };
+  }
+  // True when nothing visible sits between the camera and p.
+  isVisiblePoint(p: THREE.Vector3, tol: number): boolean {
+    // Perspective rays start at the eye; orthographic rays run parallel to the view direction.
+    const fwd = this.camera.getWorldDirection(new THREE.Vector3());
+    const from = this.camera === this.ortho ? p.clone().addScaledVector(fwd, -this.camera.far / 2) : this.camera.position;
+    const dir = p.clone().sub(from), dist = dir.length();
+    this.ray.set(from, dir.normalize());
+    const hit = this.ray.intersectObjects(this.meshes.filter(m => isShown(m)), false)[0];
+    return !hit || hit.distance >= dist - tol;
+  }
+
   private resize() {
     const r = this.el.getBoundingClientRect();
     if (!r.width || !r.height) return;
     this.renderer.setSize(r.width, r.height, false);
-    this.camera.aspect = r.width / r.height;
-    this.camera.updateProjectionMatrix();
+    this.labels.setSize(r.width, r.height);
+    this.aspect = this.persp.aspect = r.width / r.height;
+    this.persp.updateProjectionMatrix();
+    this.setOrthoHalf(this.orthoHalf);
     this.gizmo?.update();
     this.dirty = true;
   }
@@ -226,8 +315,7 @@ export class SceneView {
     if (!this.model) return null;
     const r = this.renderer.domElement.getBoundingClientRect();
     this.ray.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), this.camera);
-    const shown = (o: THREE.Object3D | null): boolean => !o || (o.visible && shown(o.parent));
-    const hit = this.ray.intersectObjects(this.meshes.filter(m => shown(m)), false)[0];
+    const hit = this.ray.intersectObjects(this.meshes.filter(m => isShown(m)), false)[0];
     return (hit?.object as THREE.Mesh) ?? null;
   }
 
@@ -239,9 +327,10 @@ export class SceneView {
     const dir = view === 'fit'
       ? this.camera.position.clone().sub(this.controls.target).normalize()
       : new THREE.Vector3(...DIRS[view]).normalize();
-    const dist = (r / Math.sin(THREE.MathUtils.degToRad(this.camera.fov / 2))) * 1.05;
+    const dist = (r / Math.sin(THREE.MathUtils.degToRad(this.persp.fov / 2))) * 1.05;
     this.camera.position.copy(c).addScaledVector(dir, dist);
     this.camera.near = dist / 1000; this.camera.far = dist * 100;
+    if (this.camera === this.ortho) { this.ortho.zoom = 1; this.setOrthoHalf((r * 1.05) / Math.min(1, this.aspect)); }
     this.camera.updateProjectionMatrix();
     this.controls.target.copy(c);
     this.gizmo.target.copy(c);
@@ -269,6 +358,7 @@ export class SceneView {
     this.edgeMat.dispose();
     this.renderer.dispose();
     this.renderer.domElement.remove();
+    this.labels.domElement.remove();
   }
 }
 

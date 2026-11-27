@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MeshBranch · toolbar mock</title>
+<style>
+:root{--bg:#f6f7f9;--panel:#fff;--panel-2:#fafbfc;--border:#e3e6eb;--border-strong:#d3d8df;--text:#111827;--muted:#6b7280;--faint:#9aa1ad;--accent:#0f766e;--accent-weak:#e6f4f2;--accent-text:#0b5e58;--hover:#f1f3f6;--vp-1:#fdfdfe;--vp-2:#eceff4;--shadow:0 8px 30px rgba(17,24,39,.12),0 2px 6px rgba(17,24,39,.06);color-scheme:light}
+[data-theme=dark]{--bg:#0c0e12;--panel:#12151b;--panel-2:#151922;--border:#232834;--border-strong:#2e3442;--text:#e7e9ee;--muted:#9097a6;--faint:#646c7c;--accent:#2dd4bf;--accent-weak:#0f2a28;--accent-text:#5eead4;--hover:#1a1f29;--vp-1:#1a1f28;--vp-2:#0d1015;--shadow:0 10px 30px rgba(0,0,0,.5);color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;font:13px/1.45 Inter,"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--text)}
+svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:none}
+button{font:inherit;color:inherit}
+.page{max-width:1100px;margin:0 auto;padding:28px 20px 60px;display:grid;gap:28px}
+h1{margin:0;font-size:18px}h2{margin:0 0 4px;font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+p.note{margin:0 0 10px;color:var(--muted)}
+.top{display:flex;justify-content:space-between;align-items:center}
+.frame{border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--panel);box-shadow:var(--shadow)}
+.stage-head{display:flex;align-items:center;justify-content:space-between;gap:12px;height:46px;padding:0 12px;border-bottom:1px solid var(--border)}
+.path{display:flex;align-items:center;gap:6px;color:var(--muted);white-space:nowrap}.path b{color:var(--text);font-weight:600}
+.ft{font:700 9px/1 ui-monospace,Consolas,monospace;padding:3px 0;width:30px;text-align:center;border:1px solid #2563eb;color:#2563eb;border-radius:4px}
+.viewport{height:220px;background:radial-gradient(120% 90% at 50% 15%,var(--vp-1),var(--vp-2));position:relative}
+.cube{position:absolute;right:14px;top:12px;width:64px;height:64px;border-radius:10px;border:2px solid var(--border-strong);display:grid;place-items:center;font:700 10px Inter;color:var(--muted);background:var(--panel)}
+
+/* Variant A: grouped icon segments */
+.tools{display:flex;align-items:center;gap:8px}
+.group{display:flex;align-items:center;gap:1px;background:var(--panel-2);border:1px solid var(--border);border-radius:8px;padding:2px}
+.ib{position:relative;display:grid;place-items:center;width:30px;height:28px;border:0;background:none;border-radius:6px;cursor:pointer;color:var(--muted)}
+.ib:hover{background:var(--hover);color:var(--text)}
+.ib[aria-pressed=true]{background:var(--panel);color:var(--accent-text);box-shadow:0 0 0 1px var(--border-strong)}
+.ib.wide{width:auto;padding:0 9px;gap:6px;display:flex;font-size:12px}
+.ib.primary[aria-pressed=true]{background:var(--accent);color:#fff;box-shadow:none}
+.ib .tip{position:absolute;top:34px;left:50%;transform:translateX(-50%);white-space:nowrap;background:var(--text);color:var(--panel);font-size:11.5px;padding:4px 7px;border-radius:6px;opacity:0;pointer-events:none;transition:opacity .12s;z-index:5}
+.ib .tip kbd{font:600 10.5px ui-monospace,Consolas,monospace;opacity:.7;margin-left:6px}
+.ib:hover .tip,.ib:focus-visible .tip{opacity:1}
+.glabel{font-size:10px;font-weight:650;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin-right:2px}
+.caret{width:10px;height:10px}
+
+/* Variant B: views in a menu */
+.menu{position:absolute;top:34px;left:0;background:var(--panel);border:1px solid var(--border);border-radius:9px;box-shadow:var(--shadow);padding:4px;min-width:170px;z-index:6}
+.mi{display:flex;align-items:center;gap:9px;width:100%;padding:7px 9px;border:0;background:none;border-radius:6px;cursor:pointer;text-align:left}
+.mi:hover{background:var(--hover)}.mi kbd{margin-left:auto;color:var(--faint);font:11px ui-monospace,Consolas,monospace}
+.wrap{position:relative}
+.map{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.map th,.map td{padding:8px 12px;border-bottom:1px solid var(--border);text-align:left}
+.map th{font-size:11px;text-transform:uppercase;color:var(--muted);letter-spacing:.05em}
+.map td svg{color:var(--accent-text)}
+.btn{height:30px;padding:0 10px;border:1px solid var(--border-strong);background:var(--panel);border-radius:7px;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="top"><h1>Viewer toolbar · mock</h1><button class="btn" id="theme">Toggle theme</button></div>
+
+  <section>
+    <h2>A · Grouped icons (recommended)</h2>
+    <p class="note">Three groups: camera, display, tools. Hover any icon for its name and key.</p>
+    <div class="frame">
+      <div class="stage-head">
+        <div class="path"><span class="ft">STP</span>Printed-Parts / STEP / <b>extruder-body.stp</b></div>
+        <div class="tools">
+          <div class="group" role="group" aria-label="Camera">
+            <button class="ib" data-i="fit"><span class="tip">Fit to view<kbd>F</kbd></span></button>
+            <button class="ib" data-i="iso"><span class="tip">Isometric<kbd>0</kbd></span></button>
+            <button class="ib" data-i="top"><span class="tip">Top<kbd>7</kbd></span></button>
+            <button class="ib" data-i="front"><span class="tip">Front<kbd>1</kbd></span></button>
+            <button class="ib" data-i="right"><span class="tip">Right<kbd>3</kbd></span></button>
+          </div>
+          <div class="group" role="group" aria-label="Display" data-radio>
+            <button class="ib" data-i="solid" aria-pressed="false"><span class="tip">Solid</span></button>
+            <button class="ib" data-i="edges" aria-pressed="true"><span class="tip">Solid with edges<kbd>E</kbd></span></button>
+            <button class="ib" data-i="wire" aria-pressed="false"><span class="tip">Wireframe<kbd>W</kbd></span></button>
+          </div>
+          <div class="group" role="group" aria-label="Scene">
+            <button class="ib" data-i="grid" aria-pressed="true" data-toggle><span class="tip">Grid<kbd>G</kbd></span></button>
+          </div>
+          <div class="group" role="group" aria-label="Tools">
+            <button class="ib wide primary" data-i="ruler" aria-pressed="false" data-toggle data-text="Measure"><span class="tip">Measure distances<kbd>M</kbd></span></button>
+          </div>
+        </div>
+      </div>
+      <div class="viewport"><div class="cube">TOP</div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>B · Compact (views in a menu)</h2>
+    <p class="note">For narrow screens. The view cube already gives the 26 views, so the menu only needs the common ones.</p>
+    <div class="frame">
+      <div class="stage-head">
+        <div class="path"><span class="ft">STP</span>Printed-Parts / STEP / <b>extruder-body.stp</b></div>
+        <div class="tools">
+          <div class="group" role="group" aria-label="Camera">
+            <button class="ib" data-i="fit"><span class="tip">Fit to view<kbd>F</kbd></span></button>
+            <div class="wrap">
+              <button class="ib wide" id="viewsBtn" data-i="cube" data-text="Views" data-caret><span class="tip">Standard views</span></button>
+              <div class="menu" id="viewsMenu" hidden>
+                <button class="mi" data-i="iso" data-text="Isometric" data-kbd="0"></button>
+                <button class="mi" data-i="top" data-text="Top" data-kbd="7"></button>
+                <button class="mi" data-i="front" data-text="Front" data-kbd="1"></button>
+                <button class="mi" data-i="right" data-text="Right" data-kbd="3"></button>
+              </div>
+            </div>
+          </div>
+          <div class="group" role="group" aria-label="Display" data-radio>
+            <button class="ib" data-i="solid" aria-pressed="false"><span class="tip">Solid</span></button>
+            <button class="ib" data-i="edges" aria-pressed="true"><span class="tip">Solid with edges</span></button>
+            <button class="ib" data-i="wire" aria-pressed="false"><span class="tip">Wireframe</span></button>
+            <button class="ib" data-i="grid" aria-pressed="true" data-toggle><span class="tip">Grid</span></button>
+          </div>
+          <div class="group" role="group" aria-label="Tools">
+            <button class="ib primary" data-i="ruler" aria-pressed="false" data-toggle><span class="tip">Measure<kbd>M</kbd></span></button>
+          </div>
+        </div>
+      </div>
+      <div class="viewport"><div class="cube">TOP</div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Icons</h2>
+    <table class="map"><thead><tr><th>Group</th><th>Button</th><th>Icon</th><th>Change from today</th></tr></thead><tbody id="map"></tbody></table>
+  </section>
+</div>
+
+<script>
+const I = {
+  fit: '<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/><rect x="9" y="9" width="6" height="6" rx="1"/>',
+  iso: '<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/>',
+  top: '<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z" opacity=".35"/><path d="M4 7.5L12 3l8 4.5L12 12z" fill="currentColor" fill-opacity=".25"/>',
+  front: '<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z" opacity=".35"/><path d="M4 7.5l8 4.5v9l-8-4.5z" fill="currentColor" fill-opacity=".25"/>',
+  right: '<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z" opacity=".35"/><path d="M20 7.5L12 12v9l8-4.5z" fill="currentColor" fill-opacity=".25"/>',
+  solid: '<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z" fill="currentColor" fill-opacity=".35" stroke="none"/>',
+  edges: '<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z" fill="currentColor" fill-opacity=".25"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/>',
+  wire: '<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9M4 16.5l8-4.5 8 4.5M12 3v9" stroke-dasharray="2 2"/>',
+  grid: '<path d="M3 9h18M3 15h18M9 3v18M15 3v18"/><rect x="3" y="3" width="18" height="18" rx="2"/>',
+  ruler: '<path d="M3 17L17 3l4 4L7 21z"/><path d="M7 13l2 2M10 10l2 2M13 7l2 2"/>',
+  cube: '<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/>',
+  caret: '<path d="M6 9l6 6 6-6"/>',
+};
+const svg = (k, cls = '') => `<svg viewBox="0 0 24 24" class="${cls}" aria-hidden="true">${I[k]}</svg>`;
+document.querySelectorAll('[data-i]').forEach(b => {
+  const tip = b.querySelector('.tip');
+  b.insertAdjacentHTML('afterbegin', svg(b.dataset.i) + (b.dataset.text ? `<span>${b.dataset.text}</span>` : '') + (b.dataset.caret !== undefined ? svg('caret', 'caret') : '') + (b.dataset.kbd ? `<kbd>${b.dataset.kbd}</kbd>` : ''));
+  if (tip) b.setAttribute('aria-label', tip.firstChild.textContent);
+});
+document.querySelectorAll('[data-radio]').forEach(g => g.addEventListener('click', e => {
+  const b = e.target.closest('.ib'); if (!b || b.dataset.toggle !== undefined) return;
+  g.querySelectorAll('.ib:not([data-toggle])').forEach(x => x.setAttribute('aria-pressed', x === b));
+}));
+document.querySelectorAll('[data-toggle]').forEach(b => b.addEventListener('click', () => b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') !== 'true')));
+const vb = document.getElementById('viewsBtn'), vm = document.getElementById('viewsMenu');
+vb.onclick = e => { e.stopPropagation(); vm.hidden = !vm.hidden; };
+document.addEventListener('click', () => vm.hidden = true);
+document.getElementById('theme').onclick = () => document.documentElement.dataset.theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+const rows = [
+  ['Camera', 'Fit', 'fit', 'same'], ['Camera', 'Iso', 'iso', 'same'], ['Camera', 'Top', 'top', 'same'], ['Camera', 'Front', 'front', 'same'], ['Camera', 'Right', 'right', 'same'],
+  ['Display', 'Solid', 'solid', 'new: today "Edges off"'], ['Display', 'Edges', 'edges', 'Edges + Wireframe become one choice of 3'], ['Display', 'Wireframe', 'wire', 'same choice group'],
+  ['Scene', 'Grid', 'grid', 'same, own group'], ['Tools', 'Measure', 'ruler', 'keeps its label; accent color when on'],
+];
+document.getElementById('map').innerHTML = rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${svg(r[2])}</td><td>${r[3]}</td></tr>`).join('');
+</script>
+</body>
+</html>
